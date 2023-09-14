@@ -1,8 +1,6 @@
-import isGif from 'is-gif';
-
 figma.showUI(__html__);
 
-const findImages = (selection, result) => {
+const findNodesWithImages = (selection, result) => {
   selection.forEach((item) => {
     if (item.fills && item.fills.length > 0) {
       item.fills.every((fill) => {
@@ -14,7 +12,7 @@ const findImages = (selection, result) => {
       });
     }
     if (typeof item.children !== 'undefined') {
-      findImages(item.children, result);
+      findNodesWithImages(item.children, result);
     }
   });
 };
@@ -33,9 +31,9 @@ figma.on('selectionchange', () => {
 });
 
 const startScan = () => {
-  let res = [];
-  findImages(figma.currentPage.selection, res);
-  filterOutGifs(res);
+  let nodesWithImages = [];
+  findNodesWithImages(figma.currentPage.selection, nodesWithImages);
+  filterOutGifs(nodesWithImages);
 };
 
 const filterOutGifs = (imageNodes) => {
