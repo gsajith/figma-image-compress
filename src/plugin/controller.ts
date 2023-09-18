@@ -1,4 +1,5 @@
-figma.showUI(__html__);
+import isGif from 'is-gif';
+figma.showUI(__html__, { width: 400, height: 400 });
 
 const findNodesWithImages = (selection, result) => {
   selection.forEach((item) => {
@@ -79,6 +80,59 @@ const filterOutGifs = (imageNodes) => {
   });
 };
 
+const compressAndApplyImage = async (imageHash, nodeIDs, bytes) => {
+  const nodeList = nodeIDs
+    .map((id) => figma.getNodeById(id))
+    .map((node) => ({
+      id: node.id,
+      fills: node.fills,
+      width: node.absoluteBoundingBox.width,
+      height: node.absoluteBoundingBox.height,
+      targetHash: imageHash,
+    }));
+
+  figma.ui.postMessage({
+    type: 'compress-image',
+    message: {
+      nodeList: nodeList,
+      bytes: bytes,
+    },
+  });
+};
+
+const startCompress = async (imageMap) => {
+  const imageHashes = Object.keys(imageMap);
+
+  console.log(imageMap);
+  for (let i = 0; i < imageHashes.length; i++) {
+    const image = figma.getImageByHash(imageHashes[i]);
+    if (image !== null) {
+      const bytes = await image.getBytesAsync();
+      if (!isGif(bytes)) {
+        await compressAndApplyImage(imageHashes[i], Object.keys(imageMap[imageHashes[i]]), bytes);
+      }
+    }
+  }
+};
+
+function clone(val) {
+  return JSON.parse(JSON.stringify(val));
+}
+
+const replaceFill = async (nodeID, fillIndex, bytes) => {
+  const node = figma.getNodeById(nodeID) as any;
+  if (node !== null) {
+    const newFills = clone(node.fills);
+    if (fillIndex < newFills.length && fillIndex >= 0) {
+      const oldFill = newFills[fillIndex];
+      const newFill = clone(oldFill);
+      newFill.imageHash = figma.createImage(new Uint8Array(bytes)).hash;
+      newFills[fillIndex] = newFill;
+    }
+    node.fills = newFills;
+  }
+};
+
 figma.ui.onmessage = async (msg) => {
   if (msg.type === 'compress-images') {
     figma.ui.postMessage({
@@ -90,8 +144,11 @@ figma.ui.onmessage = async (msg) => {
   } else if (msg.type === 'start-scan') {
     startScan();
   } else if (msg.type === 'start-compress') {
-    const imageMap = msg.imageMap;
-    console.log('Will compress...', imageMap);
+    console.log('Will try to compress...', msg.imageMap);
+    startCompress(msg.imageMap);
+  } else if (msg.type === 'set-fill') {
+    console.log('Will replace fill for...', msg);
+    replaceFill(msg.nodeID, msg.fillIndex, msg.bytes);
   }
 
   // figma.closePlugin();
