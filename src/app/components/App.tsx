@@ -118,78 +118,86 @@ function App() {
                     scaleHeight = height;
                   }
                 }
-              // TODO: Adjust for crop as well
+                break;
+              case 'CROP':
+              // TODO: Handle cropped image resizing
+              // const transform = fill.imageTransform;
+              // const croppedWidth = node.width / transform[0][0];
+              // const croppedHeight = node.height / transform[1][1];
+              // const xOff = croppedWidth * transform[0][2];
+              // const yOff = croppedHeight * transform[1][2];
+              // const widthRatio = croppedWidth / width;
+              // const heightRatio = croppedHeight / height;
+
               default:
                 break;
             }
           }
-          // TODO: We should change draw origin based on fit/fill/crop
-          if ((resizeToFit && scaleHeight !== null) || !resizeToFit) {
-            if (scaleHeight === null) {
-              scaleWidth = image.width;
-              scaleHeight = image.height;
-            }
-            console.log('Scaling image from ', image.width, image.height);
-            console.log('To ', scaleWidth, scaleHeight);
-            ctx.canvas.width = scaleWidth;
-            ctx.canvas.height = scaleHeight;
-            setCanvasWidth(scaleWidth);
-            setCanvasHeight(scaleHeight);
-            ctx.drawImage(image, 0, 0, scaleWidth, scaleHeight);
-            // Get blob from newly drawn canvas, reduce quality too if needed
-            // const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
 
-            let mimeType = getMimeTypeFromArrayBuffer(bytes);
-
-            if (mimeType === 'image/png') {
-              const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
-              const data = imageData.data;
-              let foundTransparency = false;
-              for (let c = 0; c < data.length; c += 4) {
-                if (data[c + 3] < 255) {
-                  foundTransparency = true;
-                  break;
-                }
-              }
-
-              if (!foundTransparency && convertPNGs) {
-                console.log('Converting to jpg...');
-                mimeType = 'image/jpeg';
-              }
-            }
-
-            console.log('=========================');
-
-            // TODO: Quality only changes when mimetype jpg
-            await canvas.toBlob(
-              async function (blob) {
-                // Blob to uint8array
-                const arrayBuffer = await blob.arrayBuffer();
-
-                parent.postMessage(
-                  {
-                    pluginMessage: {
-                      type: 'set-fill',
-                      nodeID: node.id,
-                      fillIndex: j,
-                      bytes: arrayBuffer,
-                    },
-                  },
-                  '*'
-                );
-
-                // Blob to base64
-                // var reader = new FileReader();
-                // reader.readAsDataURL(blob);
-                // reader.onloadend = function () {
-                //   var base64data = reader.result;
-                //   console.log(base64data);
-                // };
-              },
-              mimeType,
-              quality / 100.0
-            );
+          if (scaleHeight === null) {
+            scaleWidth = image.width;
+            scaleHeight = image.height;
           }
+          console.log('Scaling image from ', image.width, image.height);
+          console.log('To ', scaleWidth, scaleHeight);
+          ctx.canvas.width = scaleWidth;
+          ctx.canvas.height = scaleHeight;
+          setCanvasWidth(scaleWidth);
+          setCanvasHeight(scaleHeight);
+          ctx.drawImage(image, 0, 0, scaleWidth, scaleHeight);
+          // Get blob from newly drawn canvas, reduce quality too if needed
+          // const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
+
+          let mimeType = getMimeTypeFromArrayBuffer(bytes);
+
+          if (mimeType === 'image/png') {
+            const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
+            const data = imageData.data;
+            let foundTransparency = false;
+            for (let c = 0; c < data.length; c += 4) {
+              if (data[c + 3] < 255) {
+                foundTransparency = true;
+                break;
+              }
+            }
+
+            if (!foundTransparency && convertPNGs) {
+              console.log('Converting to jpg...');
+              mimeType = 'image/jpeg';
+            }
+          }
+
+          console.log('=========================');
+
+          // TODO: Quality only changes when mimetype jpg
+          await canvas.toBlob(
+            async function (blob) {
+              // Blob to uint8array
+              const arrayBuffer = await blob.arrayBuffer();
+
+              parent.postMessage(
+                {
+                  pluginMessage: {
+                    type: 'set-fill',
+                    nodeID: node.id,
+                    fillIndex: j,
+                    bytes: arrayBuffer,
+                  },
+                },
+                '*'
+              );
+
+              // Blob to base64
+              // var reader = new FileReader();
+              // reader.readAsDataURL(blob);
+              // reader.onloadend = function () {
+              //   var base64data = reader.result;
+              //   console.log(base64data);
+              // };
+            },
+            mimeType,
+            quality / 100.0
+          );
         }
       }
     },
