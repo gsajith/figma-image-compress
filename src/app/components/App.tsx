@@ -7,13 +7,18 @@ function App() {
   const canvasRef = React.useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(100);
   const [canvasHeight, setCanvasHeight] = useState(100);
-
-  const onCancel = () => {
-    parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
-  };
+  const [selectionDirty, setSelectionDirty] = useState(false);
 
   const onCompress = () => {
     parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap } }, '*');
+  };
+
+  const onScan = () => {
+    setScanningSelection(true);
+    setSelectionDirty(false);
+    setTimeout(() => {
+      parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
+    }, 250);
   };
 
   const compressImage = async (nodeList, bytes) => {
@@ -25,6 +30,7 @@ function App() {
 
     for (let i = 0; i < nodeList.length; i++) {
       const node = nodeList[i];
+      // TODO: Scale this up by 2x?
       const height = node.height;
       const width = node.width;
       const targetHash = node.targetHash;
@@ -165,11 +171,9 @@ function App() {
       } else if (type === 'selected-images') {
         setImageMap(message);
         setScanningSelection(false);
+        setSelectionDirty(false);
       } else if (type === 'start-selection') {
-        setScanningSelection(true);
-        setTimeout(() => {
-          parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
-        }, 250);
+        setSelectionDirty(true);
       } else if (type === 'compress-image') {
         compressImage(message.nodeList, message.bytes);
       }
@@ -184,16 +188,24 @@ function App() {
         height={canvasHeight}
         style={{ left: '100%', position: 'absolute' }}
       />
-      <h2>Image Compressor</h2>
-      <p>{scanningSelection && 'Scanning selection...'}</p>
-      <p>Images in selection: {imageMap ? Object.keys(imageMap).length : 0}</p>
 
-      {imageMap && Object.keys(imageMap).length > 0 && (
-        <button id="compress" onClick={onCompress}>
-          Compress
+      <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26' }}>
+        {selectionDirty ? 'Warning: Current selection is unscanned' : '\u00A0'}
+      </p>
+      <p style={{ textAlign: 'start', marginLeft: 6 }}>
+        Images in selection: {imageMap ? Object.keys(imageMap).length : 0}
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
+        <button onClick={onScan}>{scanningSelection ? 'Scanning...' : 'Scan selection'}</button>
+
+        <button
+          id="compress"
+          onClick={onCompress}
+          disabled={scanningSelection || !imageMap || Object.keys(imageMap).length <= 0 || selectionDirty}
+        >
+          Compress images
         </button>
-      )}
-      <button onClick={onCancel}>Cancel</button>
+      </div>
     </div>
   );
 }

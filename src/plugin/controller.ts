@@ -1,5 +1,5 @@
 import isGif from 'is-gif';
-figma.showUI(__html__, { width: 400, height: 400 });
+figma.showUI(__html__, { width: 350, height: 400, themeColors: true });
 
 const findNodesWithImages = (selection, result) => {
   selection.forEach((item) => {
@@ -55,24 +55,6 @@ const filterOutGifs = (imageNodes) => {
       }
     });
   });
-
-  // TODO: This is still throwing a ton of errors, skip this?
-  // const allImageHashes = Object.keys(imageHashToNodeMap);
-  // const gifImageHashes = [];
-
-  // for (let i = 0; i < allImageHashes.length; i++) {
-  //   const image = figma.getImageByHash(allImageHashes[i]);
-  //   if (image !== null) {
-  //     const bytes = await image.getBytesAsync();
-  //     if (isGif(bytes)) {
-  //       gifImageHashes.push(allImageHashes[i]);
-  //     }
-  //   }
-  // }
-
-  // for (let i = 0; i < gifImageHashes.length; i++) {
-  //   delete imageHashToNodeMap[gifImageHashes[i]];
-  // }
 
   figma.ui.postMessage({
     type: 'selected-images',
