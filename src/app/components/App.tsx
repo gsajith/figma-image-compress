@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../styles/ui.css';
 
 function App() {
@@ -8,6 +8,9 @@ function App() {
   const [canvasWidth, setCanvasWidth] = useState(100);
   const [canvasHeight, setCanvasHeight] = useState(100);
   const [selectionDirty, setSelectionDirty] = useState(false);
+  const [quality, setQuality] = useState(30);
+  const [qualityString, setQualityString] = useState('Average');
+  const [resizeToFit, setResizeToFit] = useState(true);
 
   const onCompress = () => {
     parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap } }, '*');
@@ -58,61 +61,63 @@ function App() {
         let scaleWidth = null;
         let scaleHeight = null;
 
-        switch (fill.scaleMode) {
-          case 'FILL':
-            // Smaller image dimension scales to larger layer dimension
-            if (nodeRatio < imageRatio) {
-              // Image is longer than the layer, Image width will scale to fill layer width
-              if (width >= image.width) {
-                // Layer is already bigger than the image, we shouldn't scale it down more
+        if (resizeToFit) {
+          switch (fill.scaleMode) {
+            case 'FILL':
+              // Smaller image dimension scales to larger layer dimension
+              if (nodeRatio < imageRatio) {
+                // Image is longer than the layer, Image width will scale to fill layer width
+                if (width >= image.width) {
+                  // Layer is already bigger than the image, we shouldn't scale it down more
+                } else {
+                  scaleWidth = width;
+                  scaleHeight = imageRatio * width;
+                }
+              } else if (nodeRatio > imageRatio) {
+                // Image is wider than the layer, image height will scale to fill layer height
+                if (height >= image.height) {
+                  // Layer is already bigger than the image, we shouldn't scale it down more
+                } else {
+                  scaleWidth = height / imageRatio;
+                  scaleHeight = height;
+                }
               } else {
-                scaleWidth = width;
-                scaleHeight = imageRatio * width;
+                // Image and node are the same aspect ratio, only scale image if it's larger than node
+                if (image.height > height && image.width > width) {
+                  scaleWidth = width;
+                  scaleHeight = height;
+                }
               }
-            } else if (nodeRatio > imageRatio) {
-              // Image is wider than the layer, image height will scale to fill layer height
-              if (height >= image.height) {
-                // Layer is already bigger than the image, we shouldn't scale it down more
+              break;
+            case 'FIT':
+              // Larger image dimension scales to smaller layer dimension
+              if (nodeRatio < imageRatio) {
+                // Image is longer than the layer, image height will scale to fit layer height
+                if (height >= image.height) {
+                  // Layer is already longer than the image, we shouldn't scale it down more
+                } else {
+                  scaleWidth = height / imageRatio;
+                  scaleHeight = height;
+                }
+              } else if (nodeRatio > imageRatio) {
+                // Image is wider than the layer, image width will scale to fit layer width
+                if (width >= image.width) {
+                  // Layer is already bigger than the image, we shouldn't scale it down more
+                } else {
+                  scaleWidth = width;
+                  scaleHeight = imageRatio * width;
+                }
               } else {
-                scaleWidth = height / imageRatio;
-                scaleHeight = height;
+                // Image and node are the same aspect ratio, only scale image if it's larger than node
+                if (image.height > height && image.width > width) {
+                  scaleWidth = width;
+                  scaleHeight = height;
+                }
               }
-            } else {
-              // Image and node are the same aspect ratio, only scale image if it's larger than node
-              if (image.height > height && image.width > width) {
-                scaleWidth = width;
-                scaleHeight = height;
-              }
-            }
-            break;
-          case 'FIT':
-            // Larger image dimension scales to smaller layer dimension
-            if (nodeRatio < imageRatio) {
-              // Image is longer than the layer, image height will scale to fit layer height
-              if (height >= image.height) {
-                // Layer is already longer than the image, we shouldn't scale it down more
-              } else {
-                scaleWidth = height / imageRatio;
-                scaleHeight = height;
-              }
-            } else if (nodeRatio > imageRatio) {
-              // Image is wider than the layer, image width will scale to fit layer width
-              if (width >= image.width) {
-                // Layer is already bigger than the image, we shouldn't scale it down more
-              } else {
-                scaleWidth = width;
-                scaleHeight = imageRatio * width;
-              }
-            } else {
-              // Image and node are the same aspect ratio, only scale image if it's larger than node
-              if (image.height > height && image.width > width) {
-                scaleWidth = width;
-                scaleHeight = height;
-              }
-            }
-          // TODO: Adjust for crop as well
-          default:
-            break;
+            // TODO: Adjust for crop as well
+            default:
+              break;
+          }
         }
 
         // TODO: We should change draw origin based on fit/fill/crop
@@ -128,7 +133,6 @@ function App() {
           // const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
           const mimeType = image.mimeType;
           // TODO: Quality slider?
-          const quality = 50;
           await canvas.toBlob(
             async function (blob) {
               // Blob to uint8array
@@ -180,6 +184,18 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (quality < 20) {
+      setQualityString('Low');
+    } else if (quality < 50) {
+      setQualityString('Average');
+    } else if (quality < 80) {
+      setQualityString('High');
+    } else {
+      setQualityString('Very high');
+    }
+  }, [quality]);
+
   return (
     <div>
       <canvas
@@ -189,7 +205,56 @@ function App() {
         style={{ left: '100%', position: 'absolute' }}
       />
 
-      <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'start' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            width: '100%',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <label htmlFor="quality" style={{ marginLeft: 6, fontWeight: 'bold' }}>
+            Compression quality
+          </label>
+          <div style={{ textAlign: 'end' }}>{qualityString}</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
+          <input
+            type="range"
+            min="1"
+            max="100"
+            value={quality}
+            id="quality"
+            style={{ backgroundColor: 'red', width: '100%' }}
+            onChange={(e) => {
+              setQuality(parseInt(e.target.value));
+            }}
+          />
+          <p style={{ width: 30 }}>{quality}</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+        <input
+          id="resize"
+          type="checkbox"
+          checked={resizeToFit}
+          onChange={(e) => {
+            setResizeToFit(!resizeToFit);
+          }}
+        ></input>
+        <label htmlFor="resize" style={{ marginLeft: 6, fontWeight: 'bold' }}>
+          Resize images to fit container
+        </label>
+      </div>
+      <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8 }}>
+        If image fills are larger than the object they're applied to, the plugin will resize the images down to fit the
+        container.
+      </div>
+
+      <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26', marginTop: 32 }}>
         {selectionDirty ? 'Warning: Current selection is unscanned' : '\u00A0'}
       </p>
       <p style={{ textAlign: 'start', marginLeft: 6 }}>
