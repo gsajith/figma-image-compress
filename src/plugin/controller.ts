@@ -1,5 +1,5 @@
 import isGif from 'is-gif';
-figma.showUI(__html__, { width: 350, height: 640, themeColors: true });
+figma.showUI(__html__, { width: 400, height: 640, themeColors: true });
 
 const findNodesWithImages = (selection, result) => {
   selection.forEach((item) => {
@@ -22,6 +22,7 @@ const selectionChange = () => {
   if (figma.currentPage.selection.length > 0) {
     figma.ui.postMessage({
       type: 'start-selection',
+      message: figma.currentPage.selection.length,
     });
   } else {
     figma.ui.postMessage({

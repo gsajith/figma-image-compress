@@ -9,6 +9,7 @@ function App() {
   const canvasRef = React.useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(100);
   const [canvasHeight, setCanvasHeight] = useState(100);
+  const [selectionLength, setSelectionLength] = useState(0);
   const [selectionDirty, setSelectionDirty] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [quality, setQuality] = useState(30);
@@ -140,6 +141,7 @@ function App() {
             scaleWidth = image.width;
             scaleHeight = image.height;
           }
+
           console.log('Scaling image from ', image.width, image.height);
           console.log('To ', scaleWidth, scaleHeight);
           ctx.canvas.width = scaleWidth;
@@ -216,8 +218,10 @@ function App() {
         setImageMap(message);
         setScanningSelection(false);
         setSelectionDirty(false);
+        setSelectionLength(0);
       } else if (type === 'start-selection') {
         setSelectionDirty(true);
+        setSelectionLength(message);
       } else if (type === 'compress-image') {
         compressImage(message.nodeList, message.bytes);
       }
@@ -245,26 +249,45 @@ function App() {
         style={{ left: '100%', position: 'absolute' }}
       />
 
+      {/* <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26' }}>
+        {selectionDirty ? 'Warning: Current selection is not scanned' : '\u00A0'}
+      </p>
+      <p style={{ textAlign: 'start', marginLeft: 6 }}>
+        Images in selection: {imageMap ? Object.keys(imageMap).length : 0}
+      </p> */}
+
+      {/* Scan button */}
       <div
         style={{
-          position: 'absolute',
-          width: '100%',
-          left: 0,
-          top: 0,
           display: 'flex',
-          justifyContent: 'flex-end',
+          flexDirection: 'row',
+          justifyContent: 'flex-start',
+          marginLeft: 8,
+          marginBottom: 16,
         }}
       >
+        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanningSelection}>
+          {scanningSelection ? (
+            'Scanning selection...'
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+              <IoMdRefresh style={{ transform: 'scale(1.4)', marginLeft: -4 }} />
+              Find images in selection ({selectionLength})
+            </div>
+          )}
+        </button>
+      </div>
+
+      <div className="optionsWrapper">
         <div
-          style={{
-            position: 'absolute',
-            backgroundColor: 'var(--figma-color-bg-tertiary)',
-            borderRadius: '12px 0px 12px 12px',
-            marginLeft: 4,
-            overflow: 'hidden',
-            border: '1px solid var(--figma-color-bg)',
-            transition: '300ms ease-in-out',
-          }}
+          className="optionsContainer"
+          style={
+            optionsOpen
+              ? {
+                  border: '1px solid var(--figma-color-text-disabled)',
+                }
+              : {}
+          }
         >
           <div
             className="optionToggle"
@@ -277,19 +300,11 @@ function App() {
           {optionsOpen && (
             <div style={{ padding: '24px 16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'start' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    width: '100%',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
+                <div className="qualityLabelContainer">
                   <label htmlFor="quality" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
                     JPEG Compression quality
                   </label>
-                  <div style={{ textAlign: 'end' }}>{qualityString}</div>
+                  <div style={{ textAlign: 'end', opacity: 0.8 }}>{qualityString}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
                   <input
@@ -320,7 +335,7 @@ function App() {
                   Convert PNGs to JPGs
                 </label>
               </div>
-              <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8 }}>
+              <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8, opacity: 0.8 }}>
                 Images with no transparent pixels will be converted to JPEGs, which have smaller filesizes when
                 compressed.
               </div>
@@ -338,7 +353,7 @@ function App() {
                   Resize images to fit container
                 </label>
               </div>
-              <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8 }}>
+              <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8, opacity: 0.8 }}>
                 If image fills are larger than the object they're applied to, the plugin will resize the images down to
                 fit the container.
               </div>
@@ -347,31 +362,12 @@ function App() {
         </div>
       </div>
 
-      <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26' }}>
-        {selectionDirty ? 'Warning: Current selection is not scanned' : '\u00A0'}
-      </p>
-      <p style={{ textAlign: 'start', marginLeft: 6 }}>
-        Images in selection: {imageMap ? Object.keys(imageMap).length : 0}
-      </p>
-
       {/* Scanned images */}
       <div className="imageArea"></div>
 
       {/* Button container */}
-      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', margin: 8 }}>
-        <button onClick={onScan} style={{ width: '50%' }} disabled={scanningSelection}>
-          {scanningSelection ? (
-            'Scanning...'
-          ) : (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-              <IoMdRefresh style={{ transform: 'scale(1.4)', marginLeft: -4 }} />
-              Scan selection
-            </div>
-          )}
-        </button>
-
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', margin: 4, marginRight: 8 }}>
         <button
-          style={{ width: '50%' }}
           id="compress"
           onClick={onCompress}
           disabled={scanningSelection || !imageMap || Object.keys(imageMap).length <= 0 || selectionDirty}
