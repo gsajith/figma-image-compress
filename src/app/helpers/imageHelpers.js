@@ -29,3 +29,32 @@ export async function decode(canvas, ctx, bytes) {
   const imageData = ctx.getImageData(0, 0, image.width, image.height);
   return imageData;
 }
+
+export function getMimeTypeFromArrayBuffer(arrayBuffer) {
+  const uint8arr = new Uint8Array(arrayBuffer)
+
+  const len = 4
+  if (uint8arr.length >= len) {
+    let signatureArr = new Array(len)
+    for (let i = 0; i < len; i++)
+      signatureArr[i] = (new Uint8Array(arrayBuffer))[i].toString(16)
+    const signature = signatureArr.join('').toUpperCase()
+
+    switch (signature) {
+      case '89504E47':
+        return 'image/png'
+      case '47494638':
+        return 'image/gif'
+      case '25504446':
+        return 'application/pdf'
+      case 'FFD8FFDB':
+      case 'FFD8FFE0':
+        return 'image/jpeg'
+      case '504B0304':
+        return 'application/zip'
+      default:
+        return null
+    }
+  }
+  return null
+}

@@ -1,5 +1,5 @@
 import isGif from 'is-gif';
-figma.showUI(__html__, { width: 350, height: 400, themeColors: true });
+figma.showUI(__html__, { width: 350, height: 354, themeColors: true });
 
 const findNodesWithImages = (selection, result) => {
   selection.forEach((item) => {
@@ -18,7 +18,7 @@ const findNodesWithImages = (selection, result) => {
   });
 };
 
-figma.on('selectionchange', () => {
+const selectionChange = () => {
   if (figma.currentPage.selection.length > 0) {
     figma.ui.postMessage({
       type: 'start-selection',
@@ -29,7 +29,11 @@ figma.on('selectionchange', () => {
       message: null,
     });
   }
-});
+};
+
+setTimeout(() => selectionChange(), 300);
+
+figma.on('selectionchange', selectionChange);
 
 const startScan = () => {
   let nodesWithImages = [];
@@ -85,7 +89,6 @@ const compressAndApplyImage = async (imageHash, nodeIDs, bytes) => {
 const startCompress = async (imageMap) => {
   const imageHashes = Object.keys(imageMap);
 
-  console.log(imageMap);
   for (let i = 0; i < imageHashes.length; i++) {
     const image = figma.getImageByHash(imageHashes[i]);
     if (image !== null) {

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
+import { getMimeTypeFromArrayBuffer } from '../helpers/imageHelpers.js';
 
 function App() {
   const [imageMap, setImageMap] = useState(null);
@@ -11,8 +12,10 @@ function App() {
   const [quality, setQuality] = useState(30);
   const [qualityString, setQualityString] = useState('Average');
   const [resizeToFit, setResizeToFit] = useState(true);
+  const [convertPNGs, setConvertPNGs] = useState(true);
 
   const onCompress = () => {
+    setSelectionDirty(true);
     parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap } }, '*');
   };
 
@@ -24,149 +27,176 @@ function App() {
     }, 250);
   };
 
-  const compressImage = async (nodeList, bytes) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+  const compressImage = useCallback(
+    async (nodeList, bytes) => {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
 
-    let url = null;
-    let image = null;
+      let url = null;
+      let image = null;
 
-    for (let i = 0; i < nodeList.length; i++) {
-      const node = nodeList[i];
-      // TODO: Scale this up by 2x?
-      const height = node.height;
-      const width = node.width;
-      const targetHash = node.targetHash;
+      for (let i = 0; i < nodeList.length; i++) {
+        const node = nodeList[i];
+        // TODO: Scale this up by 2x?
+        const height = node.height;
+        const width = node.width;
+        const targetHash = node.targetHash;
 
-      for (let j = 0; j < node.fills.length; j++) {
-        if (node.fills[j].imageHash !== targetHash) {
-          continue;
-        }
-        if (url === null) {
-          url = URL.createObjectURL(new Blob([bytes]));
-        }
-        if (image === null) {
-          image = (await new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = () => reject();
-            img.src = url;
-          })) as HTMLImageElement;
-        }
+        for (let j = 0; j < node.fills.length; j++) {
+          if (node.fills[j].imageHash !== targetHash) {
+            continue;
+          }
+          if (url === null) {
+            url = URL.createObjectURL(new Blob([bytes]));
+          }
+          if (image === null) {
+            image = (await new Promise((resolve, reject) => {
+              const img = new Image();
+              img.onload = () => resolve(img);
+              img.onerror = () => reject();
+              img.src = url;
+            })) as HTMLImageElement;
+          }
 
-        // Set canvas size based on fill type and image size
-        const fill = node.fills[j];
-        const nodeRatio = height / width;
-        const imageRatio = image.height / image.width;
-        let scaleWidth = null;
-        let scaleHeight = null;
+          // Set canvas size based on fill type and image size
+          const fill = node.fills[j];
+          const nodeRatio = height / width;
+          const imageRatio = image.height / image.width;
+          let scaleWidth = null;
+          let scaleHeight = null;
 
-        if (resizeToFit) {
-          switch (fill.scaleMode) {
-            case 'FILL':
-              // Smaller image dimension scales to larger layer dimension
-              if (nodeRatio < imageRatio) {
-                // Image is longer than the layer, Image width will scale to fill layer width
-                if (width >= image.width) {
-                  // Layer is already bigger than the image, we shouldn't scale it down more
+          if (resizeToFit) {
+            switch (fill.scaleMode) {
+              case 'FILL':
+                // Smaller image dimension scales to larger layer dimension
+                if (nodeRatio < imageRatio) {
+                  // Image is longer than the layer, Image width will scale to fill layer width
+                  if (width >= image.width) {
+                    // Layer is already bigger than the image, we shouldn't scale it down more
+                  } else {
+                    scaleWidth = width;
+                    scaleHeight = imageRatio * width;
+                  }
+                } else if (nodeRatio > imageRatio) {
+                  // Image is wider than the layer, image height will scale to fill layer height
+                  if (height >= image.height) {
+                    // Layer is already bigger than the image, we shouldn't scale it down more
+                  } else {
+                    scaleWidth = height / imageRatio;
+                    scaleHeight = height;
+                  }
                 } else {
-                  scaleWidth = width;
-                  scaleHeight = imageRatio * width;
+                  // Image and node are the same aspect ratio, only scale image if it's larger than node
+                  if (image.height > height && image.width > width) {
+                    scaleWidth = width;
+                    scaleHeight = height;
+                  }
                 }
-              } else if (nodeRatio > imageRatio) {
-                // Image is wider than the layer, image height will scale to fill layer height
-                if (height >= image.height) {
-                  // Layer is already bigger than the image, we shouldn't scale it down more
+                break;
+              case 'FIT':
+                // Larger image dimension scales to smaller layer dimension
+                if (nodeRatio < imageRatio) {
+                  // Image is longer than the layer, image height will scale to fit layer height
+                  if (height >= image.height) {
+                    // Layer is already longer than the image, we shouldn't scale it down more
+                  } else {
+                    scaleWidth = height / imageRatio;
+                    scaleHeight = height;
+                  }
+                } else if (nodeRatio > imageRatio) {
+                  // Image is wider than the layer, image width will scale to fit layer width
+                  if (width >= image.width) {
+                    // Layer is already bigger than the image, we shouldn't scale it down more
+                  } else {
+                    scaleWidth = width;
+                    scaleHeight = imageRatio * width;
+                  }
                 } else {
-                  scaleWidth = height / imageRatio;
-                  scaleHeight = height;
+                  // Image and node are the same aspect ratio, only scale image if it's larger than node
+                  if (image.height > height && image.width > width) {
+                    scaleWidth = width;
+                    scaleHeight = height;
+                  }
                 }
-              } else {
-                // Image and node are the same aspect ratio, only scale image if it's larger than node
-                if (image.height > height && image.width > width) {
-                  scaleWidth = width;
-                  scaleHeight = height;
+              // TODO: Adjust for crop as well
+              default:
+                break;
+            }
+          }
+          // TODO: We should change draw origin based on fit/fill/crop
+          if ((resizeToFit && scaleHeight !== null) || !resizeToFit) {
+            if (scaleHeight === null) {
+              scaleWidth = image.width;
+              scaleHeight = image.height;
+            }
+            console.log('Scaling image from ', image.width, image.height);
+            console.log('To ', scaleWidth, scaleHeight);
+            ctx.canvas.width = scaleWidth;
+            ctx.canvas.height = scaleHeight;
+            setCanvasWidth(scaleWidth);
+            setCanvasHeight(scaleHeight);
+            ctx.drawImage(image, 0, 0, scaleWidth, scaleHeight);
+            // Get blob from newly drawn canvas, reduce quality too if needed
+            // const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
+
+            let mimeType = getMimeTypeFromArrayBuffer(bytes);
+
+            if (mimeType === 'image/png') {
+              const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
+              const data = imageData.data;
+              let foundTransparency = false;
+              for (let c = 0; c < data.length; c += 4) {
+                if (data[c + 3] < 255) {
+                  foundTransparency = true;
+                  break;
                 }
               }
-              break;
-            case 'FIT':
-              // Larger image dimension scales to smaller layer dimension
-              if (nodeRatio < imageRatio) {
-                // Image is longer than the layer, image height will scale to fit layer height
-                if (height >= image.height) {
-                  // Layer is already longer than the image, we shouldn't scale it down more
-                } else {
-                  scaleWidth = height / imageRatio;
-                  scaleHeight = height;
-                }
-              } else if (nodeRatio > imageRatio) {
-                // Image is wider than the layer, image width will scale to fit layer width
-                if (width >= image.width) {
-                  // Layer is already bigger than the image, we shouldn't scale it down more
-                } else {
-                  scaleWidth = width;
-                  scaleHeight = imageRatio * width;
-                }
-              } else {
-                // Image and node are the same aspect ratio, only scale image if it's larger than node
-                if (image.height > height && image.width > width) {
-                  scaleWidth = width;
-                  scaleHeight = height;
-                }
+
+              if (!foundTransparency && convertPNGs) {
+                console.log('Converting to jpg...');
+                mimeType = 'image/jpeg';
               }
-            // TODO: Adjust for crop as well
-            default:
-              break;
+            }
+
+            console.log('=========================');
+
+            // TODO: Quality only changes when mimetype jpg
+            await canvas.toBlob(
+              async function (blob) {
+                // Blob to uint8array
+                const arrayBuffer = await blob.arrayBuffer();
+
+                parent.postMessage(
+                  {
+                    pluginMessage: {
+                      type: 'set-fill',
+                      nodeID: node.id,
+                      fillIndex: j,
+                      bytes: arrayBuffer,
+                    },
+                  },
+                  '*'
+                );
+
+                // Blob to base64
+                // var reader = new FileReader();
+                // reader.readAsDataURL(blob);
+                // reader.onloadend = function () {
+                //   var base64data = reader.result;
+                //   console.log(base64data);
+                // };
+              },
+              mimeType,
+              quality / 100.0
+            );
           }
         }
-
-        // TODO: We should change draw origin based on fit/fill/crop
-        if (scaleHeight !== null) {
-          console.log('Scaling image from ', image.width, image.height);
-          console.log('To ', scaleWidth, scaleHeight);
-          ctx.canvas.width = scaleWidth;
-          ctx.canvas.height = scaleHeight;
-          setCanvasWidth(scaleWidth);
-          setCanvasHeight(scaleHeight);
-          ctx.drawImage(image, 0, 0, scaleWidth, scaleHeight);
-          // Get blob from newly drawn canvas, reduce quality too if needed
-          // const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
-          const mimeType = image.mimeType;
-          // TODO: Quality slider?
-          await canvas.toBlob(
-            async function (blob) {
-              // Blob to uint8array
-              const arrayBuffer = await blob.arrayBuffer();
-
-              parent.postMessage(
-                {
-                  pluginMessage: {
-                    type: 'set-fill',
-                    nodeID: node.id,
-                    fillIndex: j,
-                    bytes: arrayBuffer,
-                  },
-                },
-                '*'
-              );
-
-              // Blob to base64
-              // var reader = new FileReader();
-              // reader.readAsDataURL(blob);
-              // reader.onloadend = function () {
-              //   var base64data = reader.result;
-              //   console.log(base64data);
-              // };
-            },
-            mimeType,
-            quality
-          );
-        }
       }
-    }
-  };
+    },
+    [quality, resizeToFit, convertPNGs]
+  );
 
-  React.useEffect(() => {
+  useEffect(() => {
     // This is how we read messages sent from the plugin controller
     window.onmessage = (event) => {
       const { type, message } = event.data.pluginMessage;
@@ -182,7 +212,7 @@ function App() {
         compressImage(message.nodeList, message.bytes);
       }
     };
-  }, []);
+  }, [quality, resizeToFit, convertPNGs]);
 
   useEffect(() => {
     if (quality < 20) {
@@ -215,8 +245,8 @@ function App() {
             alignItems: 'center',
           }}
         >
-          <label htmlFor="quality" style={{ marginLeft: 6, fontWeight: 'bold' }}>
-            Compression quality
+          <label htmlFor="quality" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
+            JPEG Compression quality
           </label>
           <div style={{ textAlign: 'end' }}>{qualityString}</div>
         </div>
@@ -238,14 +268,31 @@ function App() {
 
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
         <input
+          id="convertPNGs"
+          type="checkbox"
+          checked={convertPNGs}
+          onChange={() => {
+            setConvertPNGs(!convertPNGs);
+          }}
+        ></input>
+        <label htmlFor="convertPNGs" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
+          Convert PNGs to JPGs
+        </label>
+      </div>
+      <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8 }}>
+        Images with no transparent pixels will be converted to JPEGs, which have smaller filesizes when compressed.
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 24 }}>
+        <input
           id="resize"
           type="checkbox"
           checked={resizeToFit}
-          onChange={(e) => {
+          onChange={() => {
             setResizeToFit(!resizeToFit);
           }}
         ></input>
-        <label htmlFor="resize" style={{ marginLeft: 6, fontWeight: 'bold' }}>
+        <label htmlFor="resize" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
           Resize images to fit container
         </label>
       </div>
@@ -255,15 +302,18 @@ function App() {
       </div>
 
       <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26', marginTop: 32 }}>
-        {selectionDirty ? 'Warning: Current selection is unscanned' : '\u00A0'}
+        {selectionDirty ? 'Warning: Current selection is not scanned' : '\u00A0'}
       </p>
       <p style={{ textAlign: 'start', marginLeft: 6 }}>
         Images in selection: {imageMap ? Object.keys(imageMap).length : 0}
       </p>
-      <div style={{ display: 'flex', flexDirection: 'row' }}>
-        <button onClick={onScan}>{scanningSelection ? 'Scanning...' : 'Scan selection'}</button>
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
+        <button onClick={onScan} style={{ width: '50%' }}>
+          {scanningSelection ? 'Scanning...' : 'Scan selection'}
+        </button>
 
         <button
+          style={{ width: '50%' }}
           id="compress"
           onClick={onCompress}
           disabled={scanningSelection || !imageMap || Object.keys(imageMap).length <= 0 || selectionDirty}
