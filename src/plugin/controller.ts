@@ -25,10 +25,10 @@ const selectionChange = () => {
       message: figma.currentPage.selection.length,
     });
   } else {
-    figma.ui.postMessage({
-      type: 'selected-images',
-      message: null,
-    });
+    // figma.ui.postMessage({
+    //   type: 'selected-images',
+    //   message: null,
+    // });
   }
 };
 

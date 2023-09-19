@@ -10,7 +10,6 @@ function App() {
   const [canvasWidth, setCanvasWidth] = useState(100);
   const [canvasHeight, setCanvasHeight] = useState(100);
   const [selectionLength, setSelectionLength] = useState(0);
-  const [selectionDirty, setSelectionDirty] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [quality, setQuality] = useState(30);
   const [qualityString, setQualityString] = useState('Average');
@@ -18,13 +17,11 @@ function App() {
   const [convertPNGs, setConvertPNGs] = useState(true);
 
   const onCompress = () => {
-    setSelectionDirty(true);
     parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap } }, '*');
   };
 
   const onScan = () => {
     setScanningSelection(true);
-    setSelectionDirty(false);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
@@ -215,12 +212,10 @@ function App() {
       if (type === 'compress-images') {
         console.log(`Figma Says: ${message}`);
       } else if (type === 'selected-images') {
+        console.log(message);
         setImageMap(message);
         setScanningSelection(false);
-        setSelectionDirty(false);
-        setSelectionLength(0);
       } else if (type === 'start-selection') {
-        setSelectionDirty(true);
         setSelectionLength(message);
       } else if (type === 'compress-image') {
         compressImage(message.nodeList, message.bytes);
@@ -370,7 +365,7 @@ function App() {
         <button
           id="compress"
           onClick={onCompress}
-          disabled={scanningSelection || !imageMap || Object.keys(imageMap).length <= 0 || selectionDirty}
+          disabled={scanningSelection || !imageMap || Object.keys(imageMap).length <= 0}
         >
           Compress images
         </button>
