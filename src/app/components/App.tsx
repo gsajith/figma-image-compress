@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
 import { getMimeTypeFromArrayBuffer } from '../helpers/imageHelpers.js';
+import { IoMdOptions, IoMdRefresh } from 'react-icons/io';
 
 function App() {
   const [imageMap, setImageMap] = useState(null);
@@ -9,6 +10,7 @@ function App() {
   const [canvasWidth, setCanvasWidth] = useState(100);
   const [canvasHeight, setCanvasHeight] = useState(100);
   const [selectionDirty, setSelectionDirty] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [quality, setQuality] = useState(30);
   const [qualityString, setQualityString] = useState('Average');
   const [resizeToFit, setResizeToFit] = useState(true);
@@ -226,7 +228,7 @@ function App() {
     if (quality < 20) {
       setQualityString('Low');
     } else if (quality < 50) {
-      setQualityString('Average');
+      setQualityString('Medium');
     } else if (quality < 80) {
       setQualityString('High');
     } else {
@@ -235,7 +237,7 @@ function App() {
   }, [quality]);
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <canvas
         ref={canvasRef}
         width={canvasWidth}
@@ -243,81 +245,129 @@ function App() {
         style={{ left: '100%', position: 'absolute' }}
       />
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'start' }}>
+      <div
+        style={{
+          position: 'absolute',
+          width: '100%',
+          left: 0,
+          top: 0,
+          display: 'flex',
+          justifyContent: 'flex-end',
+        }}
+      >
         <div
           style={{
-            display: 'flex',
-            flexDirection: 'row',
-            width: '100%',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            position: 'absolute',
+            backgroundColor: 'var(--figma-color-bg-tertiary)',
+            borderRadius: '12px 0px 12px 12px',
+            marginLeft: 4,
+            overflow: 'hidden',
+            border: '1px solid var(--figma-color-bg)',
+            transition: '300ms ease-in-out',
           }}
         >
-          <label htmlFor="quality" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
-            JPEG Compression quality
-          </label>
-          <div style={{ textAlign: 'end' }}>{qualityString}</div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
-          <input
-            type="range"
-            min="1"
-            max="100"
-            value={quality}
-            id="quality"
-            style={{ backgroundColor: 'red', width: '100%' }}
-            onChange={(e) => {
-              setQuality(parseInt(e.target.value));
+          <div
+            className="optionToggle"
+            onClick={() => {
+              setOptionsOpen(!optionsOpen);
             }}
-          />
-          <p style={{ width: 30 }}>{quality}</p>
+          >
+            Options <IoMdOptions style={{ transform: 'scale(1.8)', width: 30 }} />
+          </div>
+          {optionsOpen && (
+            <div style={{ padding: '24px 16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'start' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    width: '100%',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <label htmlFor="quality" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
+                    JPEG Compression quality
+                  </label>
+                  <div style={{ textAlign: 'end' }}>{qualityString}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={quality}
+                    id="quality"
+                    style={{ backgroundColor: 'red', width: '100%' }}
+                    onChange={(e) => {
+                      setQuality(parseInt(e.target.value));
+                    }}
+                  />
+                  <p style={{ width: 30 }}>{quality}</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                <input
+                  id="convertPNGs"
+                  type="checkbox"
+                  checked={convertPNGs}
+                  onChange={() => {
+                    setConvertPNGs(!convertPNGs);
+                  }}
+                ></input>
+                <label htmlFor="convertPNGs" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
+                  Convert PNGs to JPGs
+                </label>
+              </div>
+              <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8 }}>
+                Images with no transparent pixels will be converted to JPEGs, which have smaller filesizes when
+                compressed.
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 24 }}>
+                <input
+                  id="resize"
+                  type="checkbox"
+                  checked={resizeToFit}
+                  onChange={() => {
+                    setResizeToFit(!resizeToFit);
+                  }}
+                ></input>
+                <label htmlFor="resize" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
+                  Resize images to fit container
+                </label>
+              </div>
+              <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8 }}>
+                If image fills are larger than the object they're applied to, the plugin will resize the images down to
+                fit the container.
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-        <input
-          id="convertPNGs"
-          type="checkbox"
-          checked={convertPNGs}
-          onChange={() => {
-            setConvertPNGs(!convertPNGs);
-          }}
-        ></input>
-        <label htmlFor="convertPNGs" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
-          Convert PNGs to JPGs
-        </label>
-      </div>
-      <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8 }}>
-        Images with no transparent pixels will be converted to JPEGs, which have smaller filesizes when compressed.
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 24 }}>
-        <input
-          id="resize"
-          type="checkbox"
-          checked={resizeToFit}
-          onChange={() => {
-            setResizeToFit(!resizeToFit);
-          }}
-        ></input>
-        <label htmlFor="resize" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
-          Resize images to fit container
-        </label>
-      </div>
-      <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8 }}>
-        If image fills are larger than the object they're applied to, the plugin will resize the images down to fit the
-        container.
-      </div>
-
-      <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26', marginTop: 32 }}>
+      <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26' }}>
         {selectionDirty ? 'Warning: Current selection is not scanned' : '\u00A0'}
       </p>
       <p style={{ textAlign: 'start', marginLeft: 6 }}>
         Images in selection: {imageMap ? Object.keys(imageMap).length : 0}
       </p>
-      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
-        <button onClick={onScan} style={{ width: '50%' }}>
-          {scanningSelection ? 'Scanning...' : 'Scan selection'}
+
+      {/* Scanned images */}
+      <div className="imageArea"></div>
+
+      {/* Button container */}
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', margin: 8 }}>
+        <button onClick={onScan} style={{ width: '50%' }} disabled={scanningSelection}>
+          {scanningSelection ? (
+            'Scanning...'
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+              <IoMdRefresh style={{ transform: 'scale(1.4)', marginLeft: -4 }} />
+              Scan selection
+            </div>
+          )}
         </button>
 
         <button

@@ -1,5 +1,5 @@
 import isGif from 'is-gif';
-figma.showUI(__html__, { width: 350, height: 354, themeColors: true });
+figma.showUI(__html__, { width: 350, height: 640, themeColors: true });
 
 const findNodesWithImages = (selection, result) => {
   selection.forEach((item) => {
