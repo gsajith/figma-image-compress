@@ -66,3 +66,15 @@ export const getImageSizeString = (byteLength) => {
     return (byteLength / 1024).toFixed(1) + "KB";
   }
 }
+
+export const getQualityString = (quality) => {
+  if (quality < 20) {
+    return 'Low';
+  } else if (quality < 50) {
+    return 'Medium';
+  } else if (quality < 80) {
+    return 'High';
+  } else {
+    return 'Very high';
+  }
+}

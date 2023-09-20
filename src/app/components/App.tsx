@@ -1,34 +1,10 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
-import { getMimeTypeFromArrayBuffer, getImageSizeString } from '../helpers/imageHelpers.js';
+import { getMimeTypeFromArrayBuffer, getQualityString } from '../helpers/imageHelpers.js';
 import { IoMdOptions, IoMdRefresh } from 'react-icons/io';
-import { GoImage, GoLinkExternal } from 'react-icons/go';
-import { FixedSizeList as List, areEqual } from 'react-window';
+import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import memoize from 'memoize-one';
-
-const Row = memo(({ data, index, style }: any) => {
-  // Data passed to List as "itemData" is available as props.data
-  const { items, toggleItemChecked } = data;
-  const item = items[index];
-
-  return (
-    <div className="imageRow" onClick={() => toggleItemChecked(index)} style={style}>
-      <GoImage style={{ width: 25, height: 20 }} />
-      <div style={{ marginRight: 4 }}>
-        {(item as any).width} × {(item as any).height}
-      </div>
-      <div style={{ opacity: 0.6 }}>— {getImageSizeString((item as any).size)}</div>
-      <GoLinkExternal className="imageRowGoIcon" style={{ width: 18, height: 18, marginLeft: 12 }} />
-      is {item.included ? 'active' : 'inactive'}
-    </div>
-  );
-}, areEqual);
-
-const createItemData = memoize((items, toggleItemChecked) => ({
-  items,
-  toggleItemChecked,
-}));
+import ImageRow, { createItemData } from './ImageRow';
 
 function App() {
   const [imageMap, setImageMap] = useState(null);
@@ -41,22 +17,21 @@ function App() {
   const [selectionLength, setSelectionLength] = useState(0);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [quality, setQuality] = useState(30);
-  const [qualityString, setQualityString] = useState('Average');
   const [resizeToFit, setResizeToFit] = useState(true);
   const [convertPNGs, setConvertPNGs] = useState(true);
 
-  const onCompress = () => {
+  const onCompress = useCallback(() => {
     parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap } }, '*');
-  };
+  }, [imageMap]);
 
-  const onScan = () => {
+  const onScan = useCallback(() => {
     setImageMetadata({});
     setSortedMetadata(null);
     setScanningSelection(true);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
-  };
+  }, []);
 
   const toggleItemChecked = useCallback(
     (index) => {
@@ -73,9 +48,9 @@ function App() {
     [sortedMetadata]
   );
 
-  useEffect(() => {
-    setSortedMetadata(Object.values(imageMetadata).sort((a, b) => (b as any).size - (a as any).size));
-  }, [imageMetadata]);
+  const goToItem = useCallback((nodeID) => {
+    parent.postMessage({ pluginMessage: { type: 'go-to-image-fill', nodeID: nodeID } }, '*');
+  }, []);
 
   const gotImageMetadata = useCallback(
     async (imageHash, bytes) => {
@@ -108,6 +83,10 @@ function App() {
   );
 
   useEffect(() => {
+    setSortedMetadata(Object.values(imageMetadata).sort((a, b) => (b as any).size - (a as any).size));
+  }, [imageMetadata]);
+
+  useEffect(() => {
     if (imageMap) {
       const imageHashes = Object.keys(imageMap);
       for (let i = 0; i < imageHashes.length; i++) {
@@ -116,17 +95,32 @@ function App() {
     }
   }, [imageMap]);
 
+  useEffect(() => {
+    window.onmessage = (event) => {
+      const { type, message } = event.data.pluginMessage;
+      if (type === 'selected-images') {
+        setImageMap(message);
+        setScanningSelection(false);
+      } else if (type === 'start-selection') {
+        setSelectionLength(message);
+      } else if (type === 'compress-image') {
+        compressImage(message.nodeList, message.bytes);
+      } else if (type === 'image-metadata') {
+        gotImageMetadata(message.imageHash, message.bytes);
+      }
+    };
+  }, [quality, resizeToFit, convertPNGs, gotImageMetadata]);
+
   const compressImage = useCallback(
     async (nodeList, bytes) => {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
-
       let url = null;
       let image = null;
 
       for (let i = 0; i < nodeList.length; i++) {
         const node = nodeList[i];
-        // TODO: Scale this up by 2x?
+        // TODO: Scale this up by 2x for retina?
         const height = node.height;
         const width = node.width;
         const targetHash = node.targetHash;
@@ -275,14 +269,6 @@ function App() {
                 },
                 '*'
               );
-
-              // Blob to base64
-              // var reader = new FileReader();
-              // reader.readAsDataURL(blob);
-              // reader.onloadend = function () {
-              //   var base64data = reader.result;
-              //   console.log(base64data);
-              // };
             },
             mimeType,
             quality / 100.0
@@ -292,34 +278,6 @@ function App() {
     },
     [quality, resizeToFit, convertPNGs]
   );
-
-  useEffect(() => {
-    window.onmessage = (event) => {
-      const { type, message } = event.data.pluginMessage;
-      if (type === 'selected-images') {
-        setImageMap(message);
-        setScanningSelection(false);
-      } else if (type === 'start-selection') {
-        setSelectionLength(message);
-      } else if (type === 'compress-image') {
-        compressImage(message.nodeList, message.bytes);
-      } else if (type === 'image-metadata') {
-        gotImageMetadata(message.imageHash, message.bytes);
-      }
-    };
-  }, [quality, resizeToFit, convertPNGs, gotImageMetadata]);
-
-  useEffect(() => {
-    if (quality < 20) {
-      setQualityString('Low');
-    } else if (quality < 50) {
-      setQualityString('Medium');
-    } else if (quality < 80) {
-      setQualityString('High');
-    } else {
-      setQualityString('Very high');
-    }
-  }, [quality]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -385,7 +343,7 @@ function App() {
                   <label htmlFor="quality" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
                     JPEG Compression quality
                   </label>
-                  <div style={{ textAlign: 'end', opacity: 0.8 }}>{qualityString}</div>
+                  <div style={{ textAlign: 'end', opacity: 0.8 }}>{getQualityString(quality)}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
                   <input
@@ -451,38 +409,16 @@ function App() {
               <List
                 className="imageArea"
                 height={height - 8}
-                itemData={createItemData(sortedMetadata, toggleItemChecked)}
+                itemData={createItemData(sortedMetadata, toggleItemChecked, goToItem)}
                 itemCount={sortedMetadata.length}
-                itemSize={70}
+                itemSize={45}
                 width={width - 16}
               >
-                {Row}
+                {ImageRow}
               </List>
             )}
           </AutoSizer>
         )}
-        {/* {imageMetadata &&
-          Object.values(imageMetadata)
-            .sort((a, b) => (b as any).size - (a as any).size)
-            .map((item) => (
-              <div
-                className="imageRow"
-                key={(item as any).key}
-                onClick={() => {
-                  parent.postMessage(
-                    { pluginMessage: { type: 'go-to-image-fill', nodeID: (item as any).nodeID } },
-                    '*'
-                  );
-                }}
-              >
-                <GoImage style={{ width: 25, height: 20 }} />
-                <div style={{ marginRight: 4 }}>
-                  {(item as any).width} × {(item as any).height}
-                </div>
-                <div style={{ opacity: 0.6 }}>— {getImageSizeString((item as any).size)}</div>
-                <GoLinkExternal className="imageRowGoIcon" style={{ width: 18, height: 18, marginLeft: 12 }} />
-              </div>
-            ))} */}
       </div>
 
       {/* Button container */}
