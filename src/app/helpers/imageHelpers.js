@@ -58,3 +58,11 @@ export function getMimeTypeFromArrayBuffer(arrayBuffer) {
   }
   return null
 }
+
+export const getImageSizeString = (byteLength) => {
+  if (byteLength > 1048576) {
+    return (byteLength / 1048576).toFixed(1) + "MB";
+  } else {
+    return (byteLength / 1024).toFixed(1) + "KB";
+  }
+}

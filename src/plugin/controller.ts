@@ -19,17 +19,10 @@ const findNodesWithImages = (selection, result) => {
 };
 
 const selectionChange = () => {
-  if (figma.currentPage.selection.length > 0) {
-    figma.ui.postMessage({
-      type: 'start-selection',
-      message: figma.currentPage.selection.length,
-    });
-  } else {
-    // figma.ui.postMessage({
-    //   type: 'selected-images',
-    //   message: null,
-    // });
-  }
+  figma.ui.postMessage({
+    type: 'start-selection',
+    message: figma.currentPage.selection.length,
+  });
 };
 
 setTimeout(() => selectionChange(), 300);
@@ -42,13 +35,13 @@ const startScan = () => {
   filterOutGifs(nodesWithImages);
 };
 
-const filterOutGifs = (imageNodes) => {
+const filterOutGifs = async (imageNodes) => {
   let imageFills = [];
   let imageHashToNodeMap = {};
 
   imageNodes.forEach((node) => {
     imageFills = imageFills.concat(node.fills);
-    node.fills.forEach((fill) => {
+    node.fills.forEach(async (fill) => {
       if (typeof fill.imageHash !== 'undefined') {
         if (fill.imageHash in imageHashToNodeMap) {
           imageHashToNodeMap[fill.imageHash][node.id] = true;
@@ -119,13 +112,35 @@ const replaceFill = async (nodeID, fillIndex, bytes) => {
   }
 };
 
-figma.ui.onmessage = async (msg) => {
-  if (msg.type === 'compress-images') {
+const getNodeName = (nodeId, imageHash) => {
+  const node = figma.getNodeById(nodeId);
+  figma.ui.postMessage({
+    type: 'node-name',
+    message: {
+      nodeId: nodeId,
+      imageHash: imageHash,
+      name: node.name,
+    },
+  });
+};
+
+const getImageMetadata = async (imageHash) => {
+  const image = figma.getImageByHash(imageHash);
+  const bytes = await image.getBytesAsync();
+
+  if (!isGif(bytes)) {
     figma.ui.postMessage({
-      type: 'compress-images',
-      message: `Compressed ${msg.count} images`,
+      type: 'image-metadata',
+      message: {
+        imageHash: imageHash,
+        bytes: bytes,
+      },
     });
-  } else if (msg.type === 'filter-out-gifs') {
+  }
+};
+
+figma.ui.onmessage = async (msg) => {
+  if (msg.type === 'filter-out-gifs') {
     filterOutGifs(msg.imageNodes);
   } else if (msg.type === 'start-scan') {
     startScan();
@@ -135,6 +150,10 @@ figma.ui.onmessage = async (msg) => {
   } else if (msg.type === 'set-fill') {
     console.log('Will replace fill for...', msg);
     replaceFill(msg.nodeID, msg.fillIndex, msg.bytes);
+  } else if (msg.type === 'get-image-metadata') {
+    getImageMetadata(msg.imageHash);
+  } else if (msg.type === 'get-node-name') {
+    getNodeName(msg.nodeId, msg.imageHash);
   }
 
   // figma.closePlugin();

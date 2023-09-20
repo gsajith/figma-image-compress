@@ -68,6 +68,8 @@ button:not(:disabled):hover {
   margin-top: 0;
   border-radius: 6px;
   border: 1px solid var(--figma-color-text-disabled);
+  overflow-y: scroll;
+  overflow-x: hidden;
 }
 
 #compress {
@@ -90,4 +92,33 @@ button:not(:disabled):hover {
   width: 100%;
   justify-content: space-between;
   align-items: center;
+}
+
+.imageRow {
+  padding: 12px;
+  border-bottom: 1px solid var(--figma-color-text-disabled);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+
+.imageRow:hover {
+  background: var(--figma-color-bg-tertiary);
+}
+
+
+/* Demonstrate a "mostly customized" scrollbar
+ * (won't be visible otherwise if width/height is specified) */
+.imageArea::-webkit-scrollbar {
+  width: 6px;
+  height: 8px;
+  background-color: var(--figma-color-text-disabled);
+  border-radius: 6px;
+  /* or add it to the track */
+}
+.imageArea::-webkit-scrollbar-thumb {
+  background: var(--figma-color-text);
+  border-radius: 6px;
 }

@@ -1,10 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
-import { getMimeTypeFromArrayBuffer } from '../helpers/imageHelpers.js';
+import { getMimeTypeFromArrayBuffer, getImageSizeString } from '../helpers/imageHelpers.js';
 import { IoMdOptions, IoMdRefresh } from 'react-icons/io';
+import { GoImage } from 'react-icons/go';
+import { VariableSizeList as List } from 'react-window';
+
+const Row = ({ index, style }) => <div style={style}>Row {index}</div>;
 
 function App() {
   const [imageMap, setImageMap] = useState(null);
+  const [imageMetadata, setImageMetadata] = useState({});
   const [scanningSelection, setScanningSelection] = useState(false);
   const canvasRef = React.useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(100);
@@ -21,11 +26,75 @@ function App() {
   };
 
   const onScan = () => {
+    setImageMetadata({});
     setScanningSelection(true);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
   };
+
+  const getNodeName = (nodeId, imageHash) => {
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: 'get-node-name',
+          nodeId,
+          imageHash,
+        },
+      },
+      '*'
+    );
+  };
+
+  const gotImageMetadata = useCallback(
+    async (imageHash, bytes) => {
+      const url = URL.createObjectURL(new Blob([bytes]));
+      const image = (await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject();
+        img.src = url;
+      })) as HTMLImageElement;
+
+      const nodesForThisHash = Object.keys(imageMap[imageHash]);
+      for (let i = 0; i < nodesForThisHash.length; i++) {
+        setImageMetadata((imageMetadata) => {
+          const newImageMetadata = JSON.parse(JSON.stringify(imageMetadata));
+          newImageMetadata[imageHash + nodesForThisHash[i]] = {
+            width: image.width,
+            height: image.height,
+            nodeId: nodesForThisHash[i],
+            size: bytes.length,
+            key: imageHash + nodesForThisHash[i],
+          };
+
+          getNodeName(nodesForThisHash[i], imageHash);
+
+          return newImageMetadata;
+        });
+      }
+    },
+    [imageMap]
+  );
+
+  const gotNodeName = (nodeId, imageHash, nodeName) => {
+    setImageMetadata((imageMetadata) => {
+      const newImageMetadata = JSON.parse(JSON.stringify(imageMetadata));
+      const metadata = newImageMetadata[imageHash + nodeId];
+      metadata.name = nodeName;
+      newImageMetadata[imageHash + nodeId] = metadata;
+      return newImageMetadata;
+    });
+  };
+
+  useEffect(() => {
+    if (imageMap) {
+      const imageHashes = Object.keys(imageMap);
+      for (let i = 0; i < imageHashes.length; i++) {
+        parent.postMessage({ pluginMessage: { type: 'get-image-metadata', imageHash: imageHashes[i] } }, '*');
+      }
+    }
+  }, [imageMap]);
 
   const compressImage = useCallback(
     async (nodeList, bytes) => {
@@ -170,7 +239,6 @@ function App() {
 
           console.log('=========================');
 
-          // TODO: Quality only changes when mimetype jpg
           await canvas.toBlob(
             async function (blob) {
               // Blob to uint8array
@@ -206,22 +274,22 @@ function App() {
   );
 
   useEffect(() => {
-    // This is how we read messages sent from the plugin controller
     window.onmessage = (event) => {
       const { type, message } = event.data.pluginMessage;
-      if (type === 'compress-images') {
-        console.log(`Figma Says: ${message}`);
-      } else if (type === 'selected-images') {
-        console.log(message);
+      if (type === 'selected-images') {
         setImageMap(message);
         setScanningSelection(false);
       } else if (type === 'start-selection') {
         setSelectionLength(message);
       } else if (type === 'compress-image') {
         compressImage(message.nodeList, message.bytes);
+      } else if (type === 'image-metadata') {
+        gotImageMetadata(message.imageHash, message.bytes);
+      } else if (type === 'node-name') {
+        gotNodeName(message.nodeId, message.imageHash, message.name);
       }
     };
-  }, [quality, resizeToFit, convertPNGs]);
+  }, [quality, resizeToFit, convertPNGs, gotImageMetadata, gotNodeName]);
 
   useEffect(() => {
     if (quality < 20) {
@@ -358,7 +426,29 @@ function App() {
       </div>
 
       {/* Scanned images */}
-      <div className="imageArea"></div>
+      <div className="imageArea">
+        {imageMetadata &&
+          Object.values(imageMetadata)
+            .sort((a, b) => (b as any).size - (a as any).size)
+            .map((item) => (
+              <div className="imageRow" key={(item as any).key}>
+                <GoImage style={{ width: 25, height: 20, marginRight: 4 }} />
+                <div
+                  style={{
+                    maxWidth: 170,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {(item as any).name ? (item as any).name : 'Loading...'}
+                </div>
+                <div style={{ marginLeft: 'auto', opacity: 0.6 }}>
+                  ({(item as any).width}x{(item as any).height}) - {getImageSizeString((item as any).size)}
+                </div>
+              </div>
+            ))}
+      </div>
 
       {/* Button container */}
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', margin: 4, marginRight: 8 }}>
