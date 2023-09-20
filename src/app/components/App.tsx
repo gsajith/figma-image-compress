@@ -7,30 +7,45 @@ import AutoSizer from 'react-virtualized-auto-sizer';
 import ImageRow, { createItemData } from './ImageRow';
 
 function App() {
+  // Map of imagehashes to node IDs which have that imagehash as a fill
   const [imageMap, setImageMap] = useState(null);
-  const [imageMetadata, setImageMetadata] = useState({});
-  const [sortedMetadata, setSortedMetadata] = useState([]);
-  const [scanningSelection, setScanningSelection] = useState(false);
-  const canvasRef = React.useRef(null);
-  const [canvasWidth, setCanvasWidth] = useState(100);
-  const [canvasHeight, setCanvasHeight] = useState(100);
+  // Map of imagehashes to that image's bytes
+  const [hashToBytesMap, setHashToBytesMap] = useState({});
+
+  // Data that is displayed in plugin UI for each image (dimensions, size, etc.)
+  const [metadata, setMetadata] = useState([]);
+
+  // Progress flags for scanning and compressing
+  const [scanning, setScanning] = useState(false);
+  const [compressing, setCompressing] = useState(false);
+
+  // How many parent items are in the selection
   const [selectionLength, setSelectionLength] = useState(0);
+
+  // Flag for if the options window is visible
   const [optionsOpen, setOptionsOpen] = useState(false);
+
+  // Options state - quality, resize, convert PNGs
   const [quality, setQuality] = useState(45);
   const [resizeToFit, setResizeToFit] = useState(true);
   const [convertPNGs, setConvertPNGs] = useState(true);
-  const [compressing, setCompressing] = useState(false);
+
+  // Number of checked images in the UI
   const [numChecked, setNumChecked] = useState(0);
+
+  const [canvasWidth, setCanvasWidth] = useState(100);
+  const [canvasHeight, setCanvasHeight] = useState(100);
+  const canvasRef = React.useRef(null);
 
   const onCompress = useCallback(() => {
     setCompressing(true);
-    parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap } }, '*');
-  }, [imageMap]);
+    parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap, hashToBytesMap, metadata } }, '*');
+  }, [imageMap, hashToBytesMap, metadata]);
 
   const onScan = useCallback(() => {
-    setImageMetadata({});
-    setSortedMetadata([]);
-    setScanningSelection(true);
+    setMetadata([]);
+    setScanning(true);
+    setHashToBytesMap({});
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
@@ -38,47 +53,47 @@ function App() {
 
   const toggleItemChecked = useCallback(
     (index) => {
-      setSortedMetadata((oldSortedMetadata) => {
-        const sortedMetadata = JSON.parse(JSON.stringify(oldSortedMetadata));
-        const newItem = sortedMetadata[index] as any;
+      setMetadata((oldMetadata) => {
+        const metadata = oldMetadata.slice(0);
+        const newItem = metadata[index] as any;
         newItem.included = !newItem.included;
-        sortedMetadata[index] = newItem;
-        return sortedMetadata;
+        metadata[index] = newItem;
+        return metadata;
       });
     },
-    [sortedMetadata]
+    [metadata]
   );
 
   const setAllChecked = useCallback(
     (checked) => {
-      setSortedMetadata((oldSortedMetadata) => {
-        const sortedMetadata = JSON.parse(JSON.stringify(oldSortedMetadata));
-        for (let i = 0; i < sortedMetadata.length; i++) {
-          const newItem = sortedMetadata[i] as any;
+      setMetadata((oldMetadata) => {
+        const metadata = oldMetadata.slice(0);
+        for (let i = 0; i < metadata.length; i++) {
+          const newItem = metadata[i] as any;
           newItem.included = checked;
-          sortedMetadata[i] = newItem;
+          metadata[i] = newItem;
         }
-        return sortedMetadata;
+        return metadata;
       });
     },
-    [sortedMetadata]
+    [metadata]
   );
 
   const setCompressedSize = useCallback(
     (key, compressedSize) => {
-      setSortedMetadata((oldSortedMetadata) => {
-        const sortedMetadata = JSON.parse(JSON.stringify(oldSortedMetadata));
-        const targetIndex = sortedMetadata.findIndex((o) => o.key === key);
+      setMetadata((oldMetadata) => {
+        const metadata = oldMetadata.slice(0);
+        const targetIndex = metadata.findIndex((o) => o.imageHash + o.nodeID === key);
         if (targetIndex >= 0) {
-          const targetItem = sortedMetadata[targetIndex];
+          const targetItem = metadata[targetIndex];
           targetItem.compressedSize = compressedSize;
           targetItem.included = false;
-          sortedMetadata[targetIndex] = targetItem;
+          metadata[targetIndex] = targetItem;
         }
-        return sortedMetadata;
+        return metadata;
       });
     },
-    [sortedMetadata]
+    [metadata]
   );
 
   const goToItem = useCallback((nodeID) => {
@@ -96,40 +111,52 @@ function App() {
       })) as HTMLImageElement;
 
       const nodesForThisHash = Object.keys(imageMap[imageHash]);
-      for (let i = 0; i < nodesForThisHash.length; i++) {
-        setImageMetadata((imageMetadata) => {
-          const newImageMetadata = JSON.parse(JSON.stringify(imageMetadata));
-          newImageMetadata[imageHash + nodesForThisHash[i]] = {
+      // Insert into sorted array
+      setMetadata((oldMetadata) => {
+        const newMetadata = oldMetadata.slice(0);
+        let insertIndex = -1;
+        for (let i = 0; i < newMetadata.length; i++) {
+          if (newMetadata[i].size < bytes.length) {
+            insertIndex = i;
+            break;
+          }
+        }
+        for (let i = 0; i < nodesForThisHash.length; i++) {
+          const newItem = {
             width: image.width,
             height: image.height,
             nodeID: nodesForThisHash[i],
+            imageHash: imageHash,
             size: bytes.length,
-            key: imageHash + nodesForThisHash[i],
             included: true,
           };
+          if (insertIndex >= 0) {
+            newMetadata.splice(insertIndex, 0, newItem);
+          } else {
+            newMetadata.push(newItem);
+          }
+        }
+        return newMetadata;
+      });
 
-          return newImageMetadata;
-        });
-      }
+      setHashToBytesMap((oldHashToBytesMap) => {
+        const newHashToBytesMap = { ...oldHashToBytesMap };
+        newHashToBytesMap[imageHash] = bytes;
+        return newHashToBytesMap;
+      });
     },
-    [imageMap]
+    [imageMap, hashToBytesMap]
   );
 
   useEffect(() => {
-    setNumChecked(sortedMetadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0));
-  }, [sortedMetadata]);
+    setNumChecked(metadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0));
+  }, [metadata]);
 
   useEffect(() => {
     if (numChecked === 0 && compressing) {
       setCompressing(false);
     }
   }, [numChecked, compressing]);
-
-  useEffect(() => {
-    if (imageMetadata && Object.values(imageMetadata).length > 0) {
-      setSortedMetadata(Object.values(imageMetadata).sort((a, b) => (b as any).size - (a as any).size));
-    }
-  }, [imageMetadata]);
 
   useEffect(() => {
     if (imageMap) {
@@ -145,7 +172,7 @@ function App() {
       const { type, message } = event.data.pluginMessage;
       if (type === 'selected-images') {
         setImageMap(message);
-        setScanningSelection(false);
+        setScanning(false);
       } else if (type === 'start-selection') {
         setSelectionLength(message);
       } else if (type === 'compress-image') {
@@ -339,13 +366,6 @@ function App() {
         style={{ left: '100%', position: 'absolute' }}
       />
 
-      {/* <p style={{ textAlign: 'start', marginLeft: 6, color: '#d17b26' }}>
-        {selectionDirty ? 'Warning: Current selection is not scanned' : '\u00A0'}
-      </p>
-      <p style={{ textAlign: 'start', marginLeft: 6 }}>
-        Images in selection: {imageMap ? Object.keys(imageMap).length : 0}
-      </p> */}
-
       {/* Scan button */}
       <div
         style={{
@@ -356,8 +376,8 @@ function App() {
           marginBottom: 16,
         }}
       >
-        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanningSelection}>
-          {scanningSelection ? (
+        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning}>
+          {scanning ? (
             'Scanning selection...'
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
@@ -453,11 +473,11 @@ function App() {
       </div>
 
       {/* Scanned images */}
-      {sortedMetadata && sortedMetadata.length > 1 && (
+      {metadata && metadata.length > 1 && (
         <div
           className="topImageRow"
           onClick={() => {
-            if (numChecked === sortedMetadata.length) {
+            if (numChecked === metadata.length) {
               // Uncheck all
               setAllChecked(false);
             } else {
@@ -467,26 +487,27 @@ function App() {
           }}
         >
           <input
-            disabled={scanningSelection || compressing}
+            disabled={scanning || compressing}
             type="checkbox"
             style={{ marginRight: 8 }}
-            checked={numChecked === sortedMetadata.length}
+            checked={numChecked === metadata.length}
+            onChange={() => {}}
           />
           <b>
-            {numChecked}/{sortedMetadata.length} images found
+            {numChecked}/{metadata.length} images found
           </b>
         </div>
       )}
       <div style={{ height: '100%', overflow: 'hidden' }}>
-        {sortedMetadata && (
+        {metadata && (
           <AutoSizer>
             {({ height, width }) => (
               <List
                 className="imageArea"
-                style={{ borderRadius: sortedMetadata.length > 0 ? '0px 0px 6px 6px' : '6px' }}
+                style={{ borderRadius: metadata.length > 0 ? '0px 0px 6px 6px' : '6px' }}
                 height={height - 8}
-                itemData={createItemData(sortedMetadata, toggleItemChecked, goToItem)}
-                itemCount={sortedMetadata.length}
+                itemData={createItemData(metadata, toggleItemChecked, goToItem)}
+                itemCount={metadata.length}
                 itemSize={45}
                 width={width - 16}
               >
@@ -502,7 +523,7 @@ function App() {
         <button
           id="compress"
           onClick={onCompress}
-          disabled={scanningSelection || !imageMap || Object.keys(imageMap).length <= 0 || compressing}
+          disabled={scanning || !imageMap || Object.keys(imageMap).length <= 0 || compressing}
         >
           Compress images
         </button>

@@ -80,13 +80,15 @@ const compressAndApplyImage = async (imageHash, nodeIDs, bytes) => {
   });
 };
 
-const startCompress = async (imageMap) => {
+const startCompress = async (imageMap, hashToBytesMap, metadata) => {
+  // TODO: Don't call compress on items where metadata is set to 'off'
   const imageHashes = Object.keys(imageMap);
 
+  console.log(hashToBytesMap);
   for (let i = 0; i < imageHashes.length; i++) {
-    const image = figma.getImageByHash(imageHashes[i]);
-    if (image !== null) {
-      const bytes = await image.getBytesAsync();
+    const bytes = hashToBytesMap[imageHashes[i]];
+    console.log(bytes);
+    if (bytes !== null && typeof bytes !== 'undefined') {
       if (!isGif(bytes)) {
         await compressAndApplyImage(imageHashes[i], Object.keys(imageMap[imageHashes[i]]), bytes);
       }
@@ -139,8 +141,8 @@ figma.ui.onmessage = async (msg) => {
   } else if (msg.type === 'start-scan') {
     startScan();
   } else if (msg.type === 'start-compress') {
-    console.log('Will try to compress...', msg.imageMap);
-    startCompress(msg.imageMap);
+    console.log('Will try to compress...', msg.metadata);
+    startCompress(msg.imageMap, msg.hashToBytesMap, msg.metadata);
   } else if (msg.type === 'set-fill') {
     console.log('Will replace fill for...', msg);
     replaceFill(msg.nodeID, msg.fillIndex, msg.bytes);

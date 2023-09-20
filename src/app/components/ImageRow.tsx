@@ -14,8 +14,8 @@ const ImageRow = memo(({ data, index, style }: any) => {
   };
 
   return (
-    <div className="imageRow" style={style} onClick={() => toggleItemChecked(index)}>
-      <input type="checkbox" checked={item.included} />
+    <div className="imageRow" style={style} onClick={() => toggleItemChecked(index)} key={item.imageHash + item.nodeID}>
+      <input type="checkbox" checked={item.included} onChange={() => {}} />
       <div className="imageRowContent" onClick={navigate}>
         <div style={{ marginLeft: 4 }}>
           {item.width} × {item.height}
