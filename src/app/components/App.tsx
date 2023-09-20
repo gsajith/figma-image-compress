@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
 import { getMimeTypeFromArrayBuffer, getImageSizeString } from '../helpers/imageHelpers.js';
 import { IoMdOptions, IoMdRefresh } from 'react-icons/io';
-import { GoImage } from 'react-icons/go';
+import { GoImage, GoLinkExternal } from 'react-icons/go';
 import { VariableSizeList as List } from 'react-window';
 
 const Row = ({ index, style }) => <div style={style}>Row {index}</div>;
@@ -33,19 +33,6 @@ function App() {
     }, 250);
   };
 
-  const getNodeName = (nodeId, imageHash) => {
-    parent.postMessage(
-      {
-        pluginMessage: {
-          type: 'get-node-name',
-          nodeId,
-          imageHash,
-        },
-      },
-      '*'
-    );
-  };
-
   const gotImageMetadata = useCallback(
     async (imageHash, bytes) => {
       const url = URL.createObjectURL(new Blob([bytes]));
@@ -63,12 +50,10 @@ function App() {
           newImageMetadata[imageHash + nodesForThisHash[i]] = {
             width: image.width,
             height: image.height,
-            nodeId: nodesForThisHash[i],
+            nodeID: nodesForThisHash[i],
             size: bytes.length,
             key: imageHash + nodesForThisHash[i],
           };
-
-          getNodeName(nodesForThisHash[i], imageHash);
 
           return newImageMetadata;
         });
@@ -76,16 +61,6 @@ function App() {
     },
     [imageMap]
   );
-
-  const gotNodeName = (nodeId, imageHash, nodeName) => {
-    setImageMetadata((imageMetadata) => {
-      const newImageMetadata = JSON.parse(JSON.stringify(imageMetadata));
-      const metadata = newImageMetadata[imageHash + nodeId];
-      metadata.name = nodeName;
-      newImageMetadata[imageHash + nodeId] = metadata;
-      return newImageMetadata;
-    });
-  };
 
   useEffect(() => {
     if (imageMap) {
@@ -285,11 +260,9 @@ function App() {
         compressImage(message.nodeList, message.bytes);
       } else if (type === 'image-metadata') {
         gotImageMetadata(message.imageHash, message.bytes);
-      } else if (type === 'node-name') {
-        gotNodeName(message.nodeId, message.imageHash, message.name);
       }
     };
-  }, [quality, resizeToFit, convertPNGs, gotImageMetadata, gotNodeName]);
+  }, [quality, resizeToFit, convertPNGs, gotImageMetadata]);
 
   useEffect(() => {
     if (quality < 20) {
@@ -431,21 +404,22 @@ function App() {
           Object.values(imageMetadata)
             .sort((a, b) => (b as any).size - (a as any).size)
             .map((item) => (
-              <div className="imageRow" key={(item as any).key}>
-                <GoImage style={{ width: 25, height: 20, marginRight: 4 }} />
-                <div
-                  style={{
-                    maxWidth: 170,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {(item as any).name ? (item as any).name : 'Loading...'}
+              <div
+                className="imageRow"
+                key={(item as any).key}
+                onClick={() => {
+                  parent.postMessage(
+                    { pluginMessage: { type: 'go-to-image-fill', nodeID: (item as any).nodeID } },
+                    '*'
+                  );
+                }}
+              >
+                <GoImage style={{ width: 25, height: 20 }} />
+                <div style={{ marginRight: 4 }}>
+                  {(item as any).width} × {(item as any).height}
                 </div>
-                <div style={{ marginLeft: 'auto', opacity: 0.6 }}>
-                  ({(item as any).width}x{(item as any).height}) - {getImageSizeString((item as any).size)}
-                </div>
+                <div style={{ opacity: 0.6 }}>— {getImageSizeString((item as any).size)}</div>
+                <GoLinkExternal className="imageRowGoIcon" style={{ width: 18, height: 18, marginLeft: 12 }} />
               </div>
             ))}
       </div>

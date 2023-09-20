@@ -106,6 +106,15 @@ button:not(:disabled):hover {
 
 .imageRow:hover {
   background: var(--figma-color-bg-tertiary);
+  text-decoration: underline;
+}
+
+.imageRowGoIcon {
+  opacity: 0;
+}
+
+.imageRow:hover > .imageRowGoIcon {
+  opacity: 0.7;
 }
 
 

@@ -112,18 +112,6 @@ const replaceFill = async (nodeID, fillIndex, bytes) => {
   }
 };
 
-const getNodeName = (nodeId, imageHash) => {
-  const node = figma.getNodeById(nodeId);
-  figma.ui.postMessage({
-    type: 'node-name',
-    message: {
-      nodeId: nodeId,
-      imageHash: imageHash,
-      name: node.name,
-    },
-  });
-};
-
 const getImageMetadata = async (imageHash) => {
   const image = figma.getImageByHash(imageHash);
   const bytes = await image.getBytesAsync();
@@ -139,6 +127,13 @@ const getImageMetadata = async (imageHash) => {
   }
 };
 
+const goToImageFill = (nodeID) => {
+  console.log(nodeID);
+  const node = figma.getNodeById(nodeID) as any;
+  figma.currentPage.selection = [node];
+  figma.viewport.scrollAndZoomIntoView([node]);
+};
+
 figma.ui.onmessage = async (msg) => {
   if (msg.type === 'filter-out-gifs') {
     filterOutGifs(msg.imageNodes);
@@ -152,8 +147,8 @@ figma.ui.onmessage = async (msg) => {
     replaceFill(msg.nodeID, msg.fillIndex, msg.bytes);
   } else if (msg.type === 'get-image-metadata') {
     getImageMetadata(msg.imageHash);
-  } else if (msg.type === 'get-node-name') {
-    getNodeName(msg.nodeId, msg.imageHash);
+  } else if (msg.type === 'go-to-image-fill') {
+    goToImageFill(msg.nodeID);
   }
 
   // figma.closePlugin();
