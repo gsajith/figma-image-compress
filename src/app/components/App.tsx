@@ -1,15 +1,39 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
 import { getMimeTypeFromArrayBuffer, getImageSizeString } from '../helpers/imageHelpers.js';
 import { IoMdOptions, IoMdRefresh } from 'react-icons/io';
 import { GoImage, GoLinkExternal } from 'react-icons/go';
-import { VariableSizeList as List } from 'react-window';
+import { FixedSizeList as List, areEqual } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
+import memoize from 'memoize-one';
 
-const Row = ({ index, style }) => <div style={style}>Row {index}</div>;
+const Row = memo(({ data, index, style }: any) => {
+  // Data passed to List as "itemData" is available as props.data
+  const { items, toggleItemChecked } = data;
+  const item = items[index];
+
+  return (
+    <div className="imageRow" onClick={() => toggleItemChecked(index)} style={style}>
+      <GoImage style={{ width: 25, height: 20 }} />
+      <div style={{ marginRight: 4 }}>
+        {(item as any).width} × {(item as any).height}
+      </div>
+      <div style={{ opacity: 0.6 }}>— {getImageSizeString((item as any).size)}</div>
+      <GoLinkExternal className="imageRowGoIcon" style={{ width: 18, height: 18, marginLeft: 12 }} />
+      is {item.included ? 'active' : 'inactive'}
+    </div>
+  );
+}, areEqual);
+
+const createItemData = memoize((items, toggleItemChecked) => ({
+  items,
+  toggleItemChecked,
+}));
 
 function App() {
   const [imageMap, setImageMap] = useState(null);
   const [imageMetadata, setImageMetadata] = useState({});
+  const [sortedMetadata, setSortedMetadata] = useState(null);
   const [scanningSelection, setScanningSelection] = useState(false);
   const canvasRef = React.useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(100);
@@ -27,11 +51,31 @@ function App() {
 
   const onScan = () => {
     setImageMetadata({});
+    setSortedMetadata(null);
     setScanningSelection(true);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
   };
+
+  const toggleItemChecked = useCallback(
+    (index) => {
+      console.log('Toggling', index);
+      setSortedMetadata((oldSortedMetadata) => {
+        console.log(oldSortedMetadata);
+        const sortedMetadata = JSON.parse(JSON.stringify(oldSortedMetadata));
+        const newItem = sortedMetadata[index] as any;
+        newItem.included = !newItem.included;
+        sortedMetadata[index] = newItem;
+        return sortedMetadata;
+      });
+    },
+    [sortedMetadata]
+  );
+
+  useEffect(() => {
+    setSortedMetadata(Object.values(imageMetadata).sort((a, b) => (b as any).size - (a as any).size));
+  }, [imageMetadata]);
 
   const gotImageMetadata = useCallback(
     async (imageHash, bytes) => {
@@ -53,6 +97,7 @@ function App() {
             nodeID: nodesForThisHash[i],
             size: bytes.length,
             key: imageHash + nodesForThisHash[i],
+            included: true,
           };
 
           return newImageMetadata;
@@ -399,8 +444,24 @@ function App() {
       </div>
 
       {/* Scanned images */}
-      <div className="imageArea">
-        {imageMetadata &&
+      <div style={{ height: '100%', overflow: 'hidden' }}>
+        {sortedMetadata && (
+          <AutoSizer>
+            {({ height, width }) => (
+              <List
+                className="imageArea"
+                height={height - 8}
+                itemData={createItemData(sortedMetadata, toggleItemChecked)}
+                itemCount={sortedMetadata.length}
+                itemSize={70}
+                width={width - 16}
+              >
+                {Row}
+              </List>
+            )}
+          </AutoSizer>
+        )}
+        {/* {imageMetadata &&
           Object.values(imageMetadata)
             .sort((a, b) => (b as any).size - (a as any).size)
             .map((item) => (
@@ -421,7 +482,7 @@ function App() {
                 <div style={{ opacity: 0.6 }}>— {getImageSizeString((item as any).size)}</div>
                 <GoLinkExternal className="imageRowGoIcon" style={{ width: 18, height: 18, marginLeft: 12 }} />
               </div>
-            ))}
+            ))} */}
       </div>
 
       {/* Button container */}
