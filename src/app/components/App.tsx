@@ -9,7 +9,7 @@ import ImageRow, { createItemData } from './ImageRow';
 function App() {
   const [imageMap, setImageMap] = useState(null);
   const [imageMetadata, setImageMetadata] = useState({});
-  const [sortedMetadata, setSortedMetadata] = useState(null);
+  const [sortedMetadata, setSortedMetadata] = useState([]);
   const [scanningSelection, setScanningSelection] = useState(false);
   const canvasRef = React.useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(100);
@@ -26,7 +26,7 @@ function App() {
 
   const onScan = useCallback(() => {
     setImageMetadata({});
-    setSortedMetadata(null);
+    setSortedMetadata([]);
     setScanningSelection(true);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
@@ -40,6 +40,21 @@ function App() {
         const newItem = sortedMetadata[index] as any;
         newItem.included = !newItem.included;
         sortedMetadata[index] = newItem;
+        return sortedMetadata;
+      });
+    },
+    [sortedMetadata]
+  );
+
+  const setAllChecked = useCallback(
+    (checked) => {
+      setSortedMetadata((oldSortedMetadata) => {
+        const sortedMetadata = JSON.parse(JSON.stringify(oldSortedMetadata));
+        for (let i = 0; i < sortedMetadata.length; i++) {
+          const newItem = sortedMetadata[i] as any;
+          newItem.included = checked;
+          sortedMetadata[i] = newItem;
+        }
         return sortedMetadata;
       });
     },
@@ -81,7 +96,9 @@ function App() {
   );
 
   useEffect(() => {
-    setSortedMetadata(Object.values(imageMetadata).sort((a, b) => (b as any).size - (a as any).size));
+    if (imageMetadata && Object.values(imageMetadata).length > 0) {
+      setSortedMetadata(Object.values(imageMetadata).sort((a, b) => (b as any).size - (a as any).size));
+    }
   }, [imageMetadata]);
 
   useEffect(() => {
@@ -400,12 +417,45 @@ function App() {
       </div>
 
       {/* Scanned images */}
+      {sortedMetadata && sortedMetadata.length > 1 && (
+        <div
+          className="topImageRow"
+          onClick={() => {
+            let totalChecked = sortedMetadata.reduce(
+              (totalChecked, current) => totalChecked + (current.included ? 1 : 0),
+              0
+            );
+
+            if (totalChecked === sortedMetadata.length) {
+              // Uncheck all
+              setAllChecked(false);
+            } else {
+              // Check all
+              setAllChecked(true);
+            }
+          }}
+        >
+          <input
+            type="checkbox"
+            style={{ marginRight: 8 }}
+            checked={
+              sortedMetadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0) ===
+              sortedMetadata.length
+            }
+          />
+          <b>
+            {sortedMetadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0)}/
+            {sortedMetadata.length} images found
+          </b>
+        </div>
+      )}
       <div style={{ height: '100%', overflow: 'hidden' }}>
         {sortedMetadata && (
           <AutoSizer>
             {({ height, width }) => (
               <List
                 className="imageArea"
+                style={{ borderRadius: sortedMetadata.length > 0 ? '0px 0px 6px 6px' : '6px' }}
                 height={height - 8}
                 itemData={createItemData(sortedMetadata, toggleItemChecked, goToItem)}
                 itemCount={sortedMetadata.length}
