@@ -6,7 +6,6 @@ import memoize from 'memoize-one';
 
 const ImageRow = memo(({ data, index, style }: any) => {
   const { items, toggleItemChecked, goToItem } = data;
-  console.log(goToItem);
   const item = items[index];
 
   const navigate = (e) => {

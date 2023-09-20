@@ -128,7 +128,6 @@ const getImageMetadata = async (imageHash) => {
 };
 
 const goToImageFill = (nodeID) => {
-  console.log(nodeID);
   const node = figma.getNodeById(nodeID) as any;
   figma.currentPage.selection = [node];
   figma.viewport.scrollAndZoomIntoView([node]);

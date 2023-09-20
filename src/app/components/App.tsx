@@ -35,9 +35,7 @@ function App() {
 
   const toggleItemChecked = useCallback(
     (index) => {
-      console.log('Toggling', index);
       setSortedMetadata((oldSortedMetadata) => {
-        console.log(oldSortedMetadata);
         const sortedMetadata = JSON.parse(JSON.stringify(oldSortedMetadata));
         const newItem = sortedMetadata[index] as any;
         newItem.included = !newItem.included;
