@@ -144,6 +144,14 @@ figma.ui.onmessage = async (msg) => {
   } else if (msg.type === 'set-fill') {
     console.log('Will replace fill for...', msg);
     replaceFill(msg.nodeID, msg.fillIndex, msg.bytes);
+
+    figma.ui.postMessage({
+      type: 'compressed-image',
+      message: {
+        key: msg.key,
+        compressedSize: msg.compressedSize,
+      },
+    });
   } else if (msg.type === 'get-image-metadata') {
     getImageMetadata(msg.imageHash);
   } else if (msg.type === 'go-to-image-fill') {

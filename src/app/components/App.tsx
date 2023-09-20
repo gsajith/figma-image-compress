@@ -16,11 +16,14 @@ function App() {
   const [canvasHeight, setCanvasHeight] = useState(100);
   const [selectionLength, setSelectionLength] = useState(0);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [quality, setQuality] = useState(30);
+  const [quality, setQuality] = useState(45);
   const [resizeToFit, setResizeToFit] = useState(true);
   const [convertPNGs, setConvertPNGs] = useState(true);
+  const [compressing, setCompressing] = useState(false);
+  const [numChecked, setNumChecked] = useState(0);
 
   const onCompress = useCallback(() => {
+    setCompressing(true);
     parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap } }, '*');
   }, [imageMap]);
 
@@ -54,6 +57,23 @@ function App() {
           const newItem = sortedMetadata[i] as any;
           newItem.included = checked;
           sortedMetadata[i] = newItem;
+        }
+        return sortedMetadata;
+      });
+    },
+    [sortedMetadata]
+  );
+
+  const setCompressedSize = useCallback(
+    (key, compressedSize) => {
+      setSortedMetadata((oldSortedMetadata) => {
+        const sortedMetadata = JSON.parse(JSON.stringify(oldSortedMetadata));
+        const targetIndex = sortedMetadata.findIndex((o) => o.key === key);
+        if (targetIndex >= 0) {
+          const targetItem = sortedMetadata[targetIndex];
+          targetItem.compressedSize = compressedSize;
+          targetItem.included = false;
+          sortedMetadata[targetIndex] = targetItem;
         }
         return sortedMetadata;
       });
@@ -96,6 +116,16 @@ function App() {
   );
 
   useEffect(() => {
+    setNumChecked(sortedMetadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0));
+  }, [sortedMetadata]);
+
+  useEffect(() => {
+    if (numChecked === 0 && compressing) {
+      setCompressing(false);
+    }
+  }, [numChecked, compressing]);
+
+  useEffect(() => {
     if (imageMetadata && Object.values(imageMetadata).length > 0) {
       setSortedMetadata(Object.values(imageMetadata).sort((a, b) => (b as any).size - (a as any).size));
     }
@@ -122,6 +152,8 @@ function App() {
         compressImage(message.nodeList, message.bytes);
       } else if (type === 'image-metadata') {
         gotImageMetadata(message.imageHash, message.bytes);
+      } else if (type === 'compressed-image') {
+        setCompressedSize(message.key, message.compressedSize);
       }
     };
   }, [quality, resizeToFit, convertPNGs, gotImageMetadata]);
@@ -237,6 +269,8 @@ function App() {
             scaleHeight = image.height;
           }
 
+          // TODO: Caching for image fill - dimension combos so we don't have to do scaling multiple times
+          // TODO: Above needs to include options in the cache key as well
           console.log('Scaling image from ', image.width, image.height);
           console.log('To ', scaleWidth, scaleHeight);
           ctx.canvas.width = scaleWidth;
@@ -280,6 +314,8 @@ function App() {
                     nodeID: node.id,
                     fillIndex: j,
                     bytes: arrayBuffer,
+                    key: targetHash + node.id,
+                    compressedSize: arrayBuffer.byteLength,
                   },
                 },
                 '*'
@@ -421,12 +457,7 @@ function App() {
         <div
           className="topImageRow"
           onClick={() => {
-            let totalChecked = sortedMetadata.reduce(
-              (totalChecked, current) => totalChecked + (current.included ? 1 : 0),
-              0
-            );
-
-            if (totalChecked === sortedMetadata.length) {
+            if (numChecked === sortedMetadata.length) {
               // Uncheck all
               setAllChecked(false);
             } else {
@@ -436,16 +467,13 @@ function App() {
           }}
         >
           <input
+            disabled={scanningSelection || compressing}
             type="checkbox"
             style={{ marginRight: 8 }}
-            checked={
-              sortedMetadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0) ===
-              sortedMetadata.length
-            }
+            checked={numChecked === sortedMetadata.length}
           />
           <b>
-            {sortedMetadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0)}/
-            {sortedMetadata.length} images found
+            {numChecked}/{sortedMetadata.length} images found
           </b>
         </div>
       )}
@@ -474,7 +502,7 @@ function App() {
         <button
           id="compress"
           onClick={onCompress}
-          disabled={scanningSelection || !imageMap || Object.keys(imageMap).length <= 0}
+          disabled={scanningSelection || !imageMap || Object.keys(imageMap).length <= 0 || compressing}
         >
           Compress images
         </button>
