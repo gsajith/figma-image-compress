@@ -475,9 +475,11 @@ function App() {
 
       {/* Scan button */}
       <div className="scanButtonContainer">
-        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning}>
+        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning || selectionLength === 0}>
           {scanning ? (
             'Scanning selection...'
+          ) : selectionLength === 0 ? (
+            'Select something to scan'
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
               <IoMdRefresh style={{ transform: 'scale(1.4)', marginLeft: -4 }} />
