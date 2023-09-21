@@ -436,6 +436,7 @@ function App() {
         style={{ left: '100%', position: 'absolute' }}
       />
 
+      {/* ============================================ Options container ============================================ */}
       <div className="optionsWrapper">
         <div
           className="optionsContainer"
@@ -519,8 +520,7 @@ function App() {
           )}
         </div>
       </div>
-
-      {/* Scan button */}
+      {/* ============================================ Scan button ============================================ */}
       <div className="scanButtonContainer">
         <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning || selectionLength === 0 || compressing}>
           {scanning ? (
@@ -568,8 +568,7 @@ function App() {
           )}
         </button>
       </div>
-
-      {/* Scanned images */}
+      {/* ============================================ Scanned images ============================================ */}
       {metadata && metadata.length > 1 && metadata.length - numCompressed > 0 && (
         <div
           className="topImageRow"
@@ -663,8 +662,7 @@ function App() {
           </AutoSizer>
         )}
       </div>
-
-      {/* Bottom button container */}
+      {/* ============================================ Bottom button container ============================================ */}
       <div className="bottomButtonContainer">
         <div style={{ marginLeft: 6, marginRight: 8, width: '100%' }}>
           {!scanning && metadata.length > 0 && (

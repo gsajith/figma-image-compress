@@ -4,7 +4,7 @@ import { GoLinkExternal } from 'react-icons/go';
 import { areEqual } from 'react-window';
 import memoize from 'memoize-one';
 
-const CANVAS_SIZE = 30 * 3;
+const DRAW_SIZE = 90;
 
 const ImageRow = memo(({ data, index, style }: any) => {
   const { items, toggleItemChecked, goToItem, compressing, scanning, hashToBytesMap } = data;
@@ -29,10 +29,10 @@ const ImageRow = memo(({ data, index, style }: any) => {
     })) as HTMLImageElement;
 
     const imageRatio = image.height / image.width;
-    const drawHeight = imageRatio > 1 ? CANVAS_SIZE : imageRatio * CANVAS_SIZE;
-    const drawWidth = imageRatio < 1 ? CANVAS_SIZE : CANVAS_SIZE / imageRatio;
-    const startX = (CANVAS_SIZE - drawWidth) / 2;
-    const startY = (CANVAS_SIZE - drawHeight) / 2;
+    const drawHeight = imageRatio > 1 ? DRAW_SIZE : imageRatio * DRAW_SIZE;
+    const drawWidth = imageRatio < 1 ? DRAW_SIZE : DRAW_SIZE / imageRatio;
+    const startX = (DRAW_SIZE - drawWidth) / 2;
+    const startY = (DRAW_SIZE - drawHeight) / 2;
 
     ctx.drawImage(image, startX, startY, drawWidth, drawHeight);
   }, []);
@@ -51,10 +51,10 @@ const ImageRow = memo(({ data, index, style }: any) => {
       <div className="imageRowContent" onClick={navigate}>
         <div style={{ backgroundColor: 'white', borderRadius: 4, overflow: 'hidden', marginLeft: 4, marginRight: 4 }}>
           <canvas
-            style={{ width: CANVAS_SIZE / 3, height: CANVAS_SIZE / 3 }}
+            style={{ width: DRAW_SIZE / 3, height: DRAW_SIZE / 3 }}
             ref={canvasRef}
-            width={CANVAS_SIZE}
-            height={CANVAS_SIZE}
+            width={DRAW_SIZE}
+            height={DRAW_SIZE}
           />
         </div>
         <div style={{ marginLeft: 4 }}>

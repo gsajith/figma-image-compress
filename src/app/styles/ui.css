@@ -1,3 +1,5 @@
+/** CSS reset from https: //andy-bell.co.uk/a-more-modern-css-reset/ **/
+
 /* Box sizing rules */
 *,
 *::before,
@@ -89,6 +91,9 @@ textarea:not([rows]) {
 :target {
   scroll-margin-block: 5ex;
 }
+
+
+/** ============================= Actual CSS starts here ============================ **/
 
 body {
   font: 12px sans-serif;
