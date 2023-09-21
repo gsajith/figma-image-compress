@@ -121,7 +121,7 @@ const replaceFill = async (nodeID, fillIndex, bytes) => {
   }
 };
 
-const getImageMetadata = async (imageHash) => {
+const getImageMetadata = async (imageHash, numRepeats) => {
   const image = figma.getImageByHash(imageHash);
   const bytes = await image.getBytesAsync();
 
@@ -131,6 +131,13 @@ const getImageMetadata = async (imageHash) => {
       message: {
         imageHash: imageHash,
         bytes: bytes,
+      },
+    });
+  } else {
+    figma.ui.postMessage({
+      type: 'skipping-gif',
+      message: {
+        numRepeats,
       },
     });
   }
@@ -162,7 +169,7 @@ figma.ui.onmessage = async (msg) => {
       },
     });
   } else if (msg.type === 'get-image-metadata') {
-    getImageMetadata(msg.imageHash);
+    getImageMetadata(msg.imageHash, msg.numRepeats);
   } else if (msg.type === 'go-to-image-fill') {
     goToImageFill(msg.nodeID);
   }

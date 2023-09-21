@@ -49,6 +49,8 @@ function App() {
   const [canvasHeight, setCanvasHeight] = useState(100);
   const canvasRef = React.useRef(null);
 
+  const [expectedMetadataCount, setExpectedMetadataCount] = useState(0);
+
   const onCompress = useCallback(() => {
     setCompressing(true);
     setOptionsOpen(false);
@@ -67,6 +69,7 @@ function App() {
     setPostCompressSize(0);
     setOptionsOpen(false);
     setImageMap(null);
+    setExpectedMetadataCount(0);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
@@ -170,6 +173,12 @@ function App() {
   );
 
   useEffect(() => {
+    if (metadata && metadata.length > 0 && metadata.length >= expectedMetadataCount) {
+      setScanning(false);
+    }
+  }, [metadata, expectedMetadataCount]);
+
+  useEffect(() => {
     setNumChecked(metadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0));
     setTotalSizeSaved(
       metadata.reduce(
@@ -215,7 +224,17 @@ function App() {
     if (imageMap) {
       const imageHashes = Object.keys(imageMap);
       for (let i = 0; i < imageHashes.length; i++) {
-        parent.postMessage({ pluginMessage: { type: 'get-image-metadata', imageHash: imageHashes[i] } }, '*');
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: 'get-image-metadata',
+              imageHash: imageHashes[i],
+              numRepeats: Object.keys(imageMap[imageHashes[i]]).length,
+            },
+          },
+          '*'
+        );
+        setExpectedMetadataCount((expected) => expected + Object.keys(imageMap[imageHashes[i]]).length);
       }
     }
   }, [imageMap]);
@@ -225,7 +244,6 @@ function App() {
       const { type, message } = event.data.pluginMessage;
       if (type === 'selected-images') {
         setImageMap(message);
-        setScanning(false);
       } else if (type === 'start-selection') {
         setSelectionLength(message);
       } else if (type === 'compress-image') {
@@ -234,6 +252,8 @@ function App() {
         gotImageMetadata(message.imageHash, message.bytes);
       } else if (type === 'compressed-image') {
         setCompressedSize(message.key, message.compressedSize);
+      } else if (type === 'skipping-gif') {
+        setExpectedMetadataCount((count) => count - message.numRepeats);
       }
     };
   }, [quality, resizeToFit, convertPNGs, gotImageMetadata]);
@@ -504,11 +524,42 @@ function App() {
       <div className="scanButtonContainer">
         <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning || selectionLength === 0 || compressing}>
           {scanning ? (
-            'Scanning selection...'
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                marginTop: -2,
+              }}
+            >
+              <div className="lds-ripple-sm">
+                <div></div>
+                <div></div>
+              </div>
+              Scanning selection...
+            </div>
           ) : selectionLength === 0 ? (
             'Select something to scan'
           ) : compressing ? (
-            'Compressing...'
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                marginTop: -2,
+              }}
+            >
+              <div className="lds-facebook">
+                <div></div>
+                <div></div>
+                <div></div>
+              </div>
+              Compressing...
+            </div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
               <IoMdRefresh style={{ transform: 'scale(1.4)', marginLeft: -4 }} />

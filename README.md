@@ -2,7 +2,18 @@
 
 Batch-compress images in Figma.
 
-if your canvas has many frames with high-definition images, Figma can lag or run out of memory. By compressing your images, you can save on memory and make your files run more smoothly.
+If your canvas has many frames with high-definition images, Figma can lag or run out of memory. By compressing your images, you can save on memory and make your files run more smoothly.
+
+This plugin will compress and replace your image fills automatically.
+
+To use this plugin:
+
+- Select one or more objects on your Figma canvas
+- Hit the ‘scan’ button to start scanning for image fills
+- Once the scan completes, select the images you want to compress
+- Adjust your scan settings (optional)
+- Hit the ‘compress’ button to compress the selected images
+- The plugin will compress and replace the image fills selected
 
 ## Quickstart
 
