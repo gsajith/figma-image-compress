@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
+import '../styles/loader.css';
 import { getMimeTypeFromArrayBuffer, getQualityString, getImageSizeString } from '../helpers/imageHelpers.js';
 import { IoMdRefresh } from 'react-icons/io';
 import { IoSettingsOutline } from 'react-icons/io5';
@@ -36,8 +37,12 @@ function App() {
   const [numChecked, setNumChecked] = useState(0);
   const [numCompressed, setNumCompressed] = useState(0);
 
-  // Total size saved
+  // Size metrics
   const [totalSizeSaved, setTotalSizeSaved] = useState(0);
+  const [totalSizeSelected, setTotalSizeSelected] = useState(0);
+  const [totalSize, setTotalSize] = useState(0);
+  const [preCompressSize, setPreCompressSize] = useState(0);
+  const [postCompressSize, setPostCompressSize] = useState(0);
 
   // State for dummy canvas to draw images to
   const [canvasWidth, setCanvasWidth] = useState(100);
@@ -56,7 +61,12 @@ function App() {
     setHashToBytesMap({});
     setTotalSizeSaved(0);
     setNumCompressed(0);
+    setTotalSizeSelected(0);
+    setTotalSize(0);
+    setPreCompressSize(0);
+    setPostCompressSize(0);
     setOptionsOpen(false);
+    setImageMap(null);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
@@ -169,6 +179,24 @@ function App() {
         0
       )
     );
+    setPreCompressSize(
+      metadata.reduce(
+        (preCompressSize, current) =>
+          preCompressSize + (typeof current.compressedSize !== 'undefined' ? current.size : 0),
+        0
+      )
+    );
+    setPostCompressSize(
+      metadata.reduce(
+        (postCompressSize, current) =>
+          postCompressSize + (typeof current.compressedSize !== 'undefined' ? current.compressedSize : 0),
+        0
+      )
+    );
+    setTotalSizeSelected(
+      metadata.reduce((totalSizeSelected, current) => totalSizeSelected + (current.included ? current.size : 0), 0)
+    );
+    setTotalSize(metadata.reduce((totalSize, current) => totalSize + current.size, 0));
     setNumCompressed(
       metadata.reduce(
         (totalCompressed, current) => totalCompressed + (typeof current.compressedSize !== 'undefined' ? 1 : 0),
@@ -510,14 +538,26 @@ function App() {
             disabled={scanning || compressing}
             type="checkbox"
             style={{ marginRight: 8 }}
-            checked={numChecked === metadata.length}
+            checked={numChecked === metadata.length - numCompressed}
             onChange={() => {}}
           />
           {numChecked}/{metadata.length - numCompressed} images selected
+          <div style={{ opacity: 0.6, marginLeft: 4, fontWeight: 400 }}>
+            — {getImageSizeString(totalSizeSelected)}{' '}
+            {totalSizeSelected !== totalSize - preCompressSize && (
+              <>of {getImageSizeString(totalSize - preCompressSize)}</>
+            )}
+          </div>
         </div>
       )}
-      <div style={{ height: '100%', overflow: 'hidden', marginBottom: metadata.length === 0 ? 8 : 0 }}>
-        {metadata.length === 0 && (
+      <div
+        style={{
+          height: '100%',
+          overflow: 'hidden',
+          marginBottom: metadata.length === 0 ? 8 : 0,
+        }}
+      >
+        {metadata.length === 0 && !imageMap && (
           <div
             className="imageArea"
             style={{
@@ -537,8 +577,20 @@ function App() {
                 gap: 12,
               }}
             >
-              <ImFilesEmpty style={{ width: 32, height: 32 }} />
-              Awaiting scan
+              {scanning ? (
+                <>
+                  <div className="lds-ripple">
+                    <div></div>
+                    <div></div>
+                  </div>
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <ImFilesEmpty style={{ width: 32, height: 32 }} />
+                  Awaiting scan
+                </>
+              )}
             </div>
           </div>
         )}
@@ -551,7 +603,7 @@ function App() {
                   borderRadius: metadata.length > 1 && metadata.length - numCompressed > 0 ? '0px 0px 6px 6px' : '6px',
                 }}
                 height={height - 8}
-                itemData={createItemData(metadata, toggleItemChecked, goToItem, compressing, scanning)}
+                itemData={createItemData(metadata, toggleItemChecked, goToItem, compressing, scanning, hashToBytesMap)}
                 itemCount={metadata.length}
                 itemSize={45}
                 width={width - 16}
@@ -562,6 +614,27 @@ function App() {
           </AutoSizer>
         )}
       </div>
+      {/*
+      {totalSizeSaved > 0 && (
+        <div
+          style={{
+            background: 'var(--figma-color-bg-success)',
+            width: 'calc(100% - 16)',
+            height: 30,
+            zIndex: 3,
+            marginLeft: 8,
+            marginRight: 8,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: 6,
+            marginBottom: 8,
+            color: 'white',
+          }}
+        >
+          You saved {getImageSizeString(totalSizeSaved)}!
+        </div>
+      )} */}
 
       {/* Bottom button container */}
       <div className="bottomButtonContainer">
@@ -569,13 +642,12 @@ function App() {
           {!scanning && metadata.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {totalSizeSaved > 0 ? (
-                <div
-                  style={{
-                    fontWeight: 'bold',
-                    color: 'var(--figma-color-text-success)',
-                  }}
-                >
-                  You saved {getImageSizeString(totalSizeSaved)}!
+                <div>
+                  <span style={{ opacity: 0.6, marginRight: 4 }}>{getImageSizeString(preCompressSize)}</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--figma-color-text-success)', marginTop: -3 }}>
+                    ⭢ {getImageSizeString(postCompressSize)} (-
+                    {Math.max(0, (1 - postCompressSize / preCompressSize) * 100).toFixed(0)}%)
+                  </span>
                 </div>
               ) : (
                 <div>
