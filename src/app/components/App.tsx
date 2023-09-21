@@ -3,6 +3,7 @@ import '../styles/ui.css';
 import { getMimeTypeFromArrayBuffer, getQualityString, getImageSizeString } from '../helpers/imageHelpers.js';
 import { IoMdRefresh } from 'react-icons/io';
 import { IoSettingsOutline } from 'react-icons/io5';
+import { ImFilesEmpty } from 'react-icons/im';
 import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import ImageRow, { createItemData } from './ImageRow';
@@ -475,11 +476,13 @@ function App() {
 
       {/* Scan button */}
       <div className="scanButtonContainer">
-        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning || selectionLength === 0}>
+        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning || selectionLength === 0 || compressing}>
           {scanning ? (
             'Scanning selection...'
           ) : selectionLength === 0 ? (
             'Select something to scan'
+          ) : compressing ? (
+            'Compressing...'
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
               <IoMdRefresh style={{ transform: 'scale(1.4)', marginLeft: -4 }} />
@@ -510,12 +513,35 @@ function App() {
             checked={numChecked === metadata.length}
             onChange={() => {}}
           />
-          <b>
-            {numChecked}/{metadata.length - numCompressed} images selected
-          </b>
+          {numChecked}/{metadata.length - numCompressed} images selected
         </div>
       )}
-      <div style={{ height: '100%', overflow: 'hidden' }}>
+      <div style={{ height: '100%', overflow: 'hidden', marginBottom: metadata.length === 0 ? 8 : 0 }}>
+        {metadata.length === 0 && (
+          <div
+            className="imageArea"
+            style={{
+              boxSizing: 'border-box',
+              justifyContent: 'center',
+              alignItems: 'center',
+              display: 'flex',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 14,
+                opacity: 0.3,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <ImFilesEmpty style={{ width: 32, height: 32 }} />
+              Awaiting scan
+            </div>
+          </div>
+        )}
         {metadata && (
           <AutoSizer>
             {({ height, width }) => (
@@ -557,6 +583,8 @@ function App() {
                     ? numCompressed === metadata.length
                       ? 'All images compressed'
                       : 'Select images to compress'
+                    : compressing
+                    ? 'Compressing...'
                     : 'Ready to compress!'}
                 </div>
               )}

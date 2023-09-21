@@ -161,7 +161,7 @@ button:not(:disabled):hover {
   border: 1px solid var(--figma-color-text-disabled);
   border-bottom: none;
   font-size: 13px;
-  letter-spacing: 0.5;
+  font-weight: 600;
 }
 
 .topImageRow:hover {
