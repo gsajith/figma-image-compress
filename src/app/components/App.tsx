@@ -664,28 +664,6 @@ function App() {
         )}
       </div>
 
-      {/*
-      {totalSizeSaved > 0 && (
-        <div
-          style={{
-            background: 'var(--figma-color-bg-success)',
-            width: 'calc(100% - 16)',
-            height: 30,
-            zIndex: 3,
-            marginLeft: 8,
-            marginRight: 8,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderRadius: 6,
-            marginBottom: 8,
-            color: 'white',
-          }}
-        >
-          You saved {getImageSizeString(totalSizeSaved)}!
-        </div>
-      )} */}
-
       {/* Bottom button container */}
       <div className="bottomButtonContainer">
         <div style={{ marginLeft: 6, marginRight: 8, width: '100%' }}>
