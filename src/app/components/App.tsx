@@ -490,7 +490,7 @@ function App() {
                   }}
                 ></input>
                 <label htmlFor="convertPNGs" style={{ marginLeft: 6, fontWeight: 'bold', userSelect: 'none' }}>
-                  Convert PNGs to JPGs
+                  Convert PNGs to JPGs (recommended)
                 </label>
               </div>
               <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8, opacity: 0.8 }}>
@@ -512,7 +512,7 @@ function App() {
                 </label>
               </div>
               <div style={{ textAlign: 'start', marginLeft: 6, marginTop: 8, opacity: 0.8 }}>
-                If image fills are larger than the object they're applied to, the plugin will resize the images down to
+                If image fills are larger than the object they're applied to, the plugin will scale the images down to
                 fit the container.
               </div>
             </div>
