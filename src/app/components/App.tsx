@@ -44,6 +44,7 @@ function App() {
 
   const onCompress = useCallback(() => {
     setCompressing(true);
+    setOptionsOpen(false);
     parent.postMessage({ pluginMessage: { type: 'start-compress', imageMap, hashToBytesMap, metadata } }, '*');
   }, [imageMap, hashToBytesMap, metadata]);
 
@@ -53,6 +54,7 @@ function App() {
     setHashToBytesMap({});
     setTotalSizeSaved(0);
     setNumCompressed(0);
+    setOptionsOpen(false);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
