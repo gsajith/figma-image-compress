@@ -1,5 +1,5 @@
 import isGif from 'is-gif';
-figma.showUI(__html__, { width: 400, height: 640, themeColors: true });
+figma.showUI(__html__, { width: 400, height: 500, themeColors: true });
 
 const findNodesWithImages = (selection, result) => {
   selection.forEach((item) => {
@@ -84,10 +84,8 @@ const startCompress = async (imageMap, hashToBytesMap, metadata) => {
   // TODO: Don't call compress on items where metadata is set to 'off'
   const imageHashes = Object.keys(imageMap);
 
-  console.log(hashToBytesMap);
   for (let i = 0; i < imageHashes.length; i++) {
     const bytes = hashToBytesMap[imageHashes[i]];
-    console.log(bytes);
     if (bytes !== null && typeof bytes !== 'undefined') {
       if (!isGif(bytes)) {
         await compressAndApplyImage(imageHashes[i], Object.keys(imageMap[imageHashes[i]]), bytes);

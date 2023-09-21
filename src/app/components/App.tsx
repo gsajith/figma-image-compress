@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
-import { getMimeTypeFromArrayBuffer, getQualityString } from '../helpers/imageHelpers.js';
+import { getMimeTypeFromArrayBuffer, getQualityString, getImageSizeString } from '../helpers/imageHelpers.js';
 import { IoMdOptions, IoMdRefresh } from 'react-icons/io';
 import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
@@ -33,6 +33,9 @@ function App() {
   // Number of checked images in the UI
   const [numChecked, setNumChecked] = useState(0);
 
+  // Total size saved
+  const [totalSizeSaved, setTotalSizeSaved] = useState(0);
+
   const [canvasWidth, setCanvasWidth] = useState(100);
   const [canvasHeight, setCanvasHeight] = useState(100);
   const canvasRef = React.useRef(null);
@@ -46,6 +49,7 @@ function App() {
     setMetadata([]);
     setScanning(true);
     setHashToBytesMap({});
+    setTotalSizeSaved(0);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
@@ -150,6 +154,14 @@ function App() {
 
   useEffect(() => {
     setNumChecked(metadata.reduce((totalChecked, current) => totalChecked + (current.included ? 1 : 0), 0));
+    setTotalSizeSaved(
+      metadata.reduce(
+        (totalSizeSaved, current) =>
+          totalSizeSaved +
+          (typeof current.compressedSize !== 'undefined' ? Math.max(0, current.size - current.compressedSize) : 0),
+        0
+      )
+    );
   }, [metadata]);
 
   useEffect(() => {
@@ -520,6 +532,7 @@ function App() {
 
       {/* Button container */}
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', margin: 4, marginRight: 8 }}>
+        <div>{getImageSizeString(totalSizeSaved)}</div>
         <button
           id="compress"
           onClick={onCompress}
