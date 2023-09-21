@@ -23,6 +23,22 @@ button:not(:disabled):hover {
   background: var(--figma-color-bg-tertiary);
 }
 
+.scanButtonContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  margin-left: 8px;
+  margin-bottom: 16px;
+}
+
+.bottomButtonContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin: 4px;
+  margin-right: 8px;
+}
+
 .optionsWrapper {
   position: absolute;
   width: 80%;
@@ -152,7 +168,6 @@ button:not(:disabled):hover {
   background: var(--figma-color-bg-tertiary);
 }
 
-
 /* Demonstrate a "mostly customized" scrollbar
  * (won't be visible otherwise if width/height is specified) */
 .imageArea::-webkit-scrollbar {
@@ -165,4 +180,16 @@ button:not(:disabled):hover {
 .imageArea::-webkit-scrollbar-thumb {
   background: var(--figma-color-text);
   border-radius: 6px;
+}
+
+.compressionStatusContainer {
+  width: 100%;
+  border-radius: 24px;
+  height: 24px;
+  background-color: var(--figma-color-bg-tertiary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
 }

@@ -84,7 +84,6 @@ const startCompress = async (imageMap, hashToBytesMap, metadata) => {
   // TODO: Don't call compress on items where metadata is set to 'off'
   const imageHashes = Object.keys(imageMap);
 
-  console.log('here', metadata);
   for (let i = 0; i < imageHashes.length; i++) {
     const imageHash = imageHashes[i];
     const bytes = hashToBytesMap[imageHash];

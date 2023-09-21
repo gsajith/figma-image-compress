@@ -38,6 +38,7 @@ function App() {
   // Total size saved
   const [totalSizeSaved, setTotalSizeSaved] = useState(0);
 
+  // State for dummy canvas to draw images to
   const [canvasWidth, setCanvasWidth] = useState(100);
   const [canvasHeight, setCanvasHeight] = useState(100);
   const canvasRef = React.useRef(null);
@@ -76,7 +77,6 @@ function App() {
   const setAllChecked = useCallback(
     (checked) => {
       setMetadata((oldMetadata) => {
-        console.log('Set all checked', checked);
         const metadata = oldMetadata.slice(0);
         for (let i = 0; i < metadata.length; i++) {
           const newItem = metadata[i] as any;
@@ -474,15 +474,7 @@ function App() {
       </div>
 
       {/* Scan button */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: 'flex-start',
-          marginLeft: 8,
-          marginBottom: 16,
-        }}
-      >
+      <div className="scanButtonContainer">
         <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning}>
           {scanning ? (
             'Scanning selection...'
@@ -544,9 +536,7 @@ function App() {
       </div>
 
       {/* Bottom button container */}
-      <div
-        style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', margin: 4, marginRight: 8 }}
-      >
+      <div className="bottomButtonContainer">
         <div style={{ marginLeft: 6, marginRight: 8, width: '100%' }}>
           {!scanning && metadata.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -568,19 +558,7 @@ function App() {
                     : 'Ready to compress!'}
                 </div>
               )}
-              <div
-                style={{
-                  width: '100%',
-                  borderRadius: 30,
-                  height: 24,
-                  backgroundColor: 'var(--figma-color-bg-tertiary)',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
+              <div className="compressionStatusContainer">
                 <div style={{ zIndex: 2 }}>
                   {numCompressed}/{numChecked + numCompressed} compressed
                 </div>
