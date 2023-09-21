@@ -32,6 +32,7 @@ function App() {
 
   // Number of checked images in the UI
   const [numChecked, setNumChecked] = useState(0);
+  const [numCompressed, setNumCompressed] = useState(0);
 
   // Total size saved
   const [totalSizeSaved, setTotalSizeSaved] = useState(0);
@@ -50,6 +51,7 @@ function App() {
     setScanning(true);
     setHashToBytesMap({});
     setTotalSizeSaved(0);
+    setNumCompressed(0);
     setTimeout(() => {
       parent.postMessage({ pluginMessage: { type: 'start-scan' } }, '*');
     }, 250);
@@ -60,7 +62,7 @@ function App() {
       setMetadata((oldMetadata) => {
         const metadata = oldMetadata.slice(0);
         const newItem = metadata[index] as any;
-        newItem.included = !newItem.included;
+        newItem.included = !newItem.included && typeof newItem.compressedSize === 'undefined';
         metadata[index] = newItem;
         return metadata;
       });
@@ -71,10 +73,11 @@ function App() {
   const setAllChecked = useCallback(
     (checked) => {
       setMetadata((oldMetadata) => {
+        console.log('Set all checked', checked);
         const metadata = oldMetadata.slice(0);
         for (let i = 0; i < metadata.length; i++) {
           const newItem = metadata[i] as any;
-          newItem.included = checked;
+          newItem.included = checked && typeof newItem.compressedSize === 'undefined';
           metadata[i] = newItem;
         }
         return metadata;
@@ -159,6 +162,12 @@ function App() {
         (totalSizeSaved, current) =>
           totalSizeSaved +
           (typeof current.compressedSize !== 'undefined' ? Math.max(0, current.size - current.compressedSize) : 0),
+        0
+      )
+    );
+    setNumCompressed(
+      metadata.reduce(
+        (totalCompressed, current) => totalCompressed + (typeof current.compressedSize !== 'undefined' ? 1 : 0),
         0
       )
     );
@@ -489,7 +498,7 @@ function App() {
         <div
           className="topImageRow"
           onClick={() => {
-            if (numChecked === metadata.length) {
+            if (numChecked === metadata.length - numCompressed) {
               // Uncheck all
               setAllChecked(false);
             } else {
@@ -506,7 +515,7 @@ function App() {
             onChange={() => {}}
           />
           <b>
-            {numChecked}/{metadata.length} images found
+            {numChecked}/{metadata.length - numCompressed} images selected
           </b>
         </div>
       )}
@@ -518,7 +527,7 @@ function App() {
                 className="imageArea"
                 style={{ borderRadius: metadata.length > 0 ? '0px 0px 6px 6px' : '6px' }}
                 height={height - 8}
-                itemData={createItemData(metadata, toggleItemChecked, goToItem)}
+                itemData={createItemData(metadata, toggleItemChecked, goToItem, compressing, scanning)}
                 itemCount={metadata.length}
                 itemSize={45}
                 width={width - 16}

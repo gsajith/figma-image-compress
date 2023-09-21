@@ -84,11 +84,21 @@ const startCompress = async (imageMap, hashToBytesMap, metadata) => {
   // TODO: Don't call compress on items where metadata is set to 'off'
   const imageHashes = Object.keys(imageMap);
 
+  console.log('here', metadata);
   for (let i = 0; i < imageHashes.length; i++) {
-    const bytes = hashToBytesMap[imageHashes[i]];
+    const imageHash = imageHashes[i];
+    const bytes = hashToBytesMap[imageHash];
     if (bytes !== null && typeof bytes !== 'undefined') {
       if (!isGif(bytes)) {
-        await compressAndApplyImage(imageHashes[i], Object.keys(imageMap[imageHashes[i]]), bytes);
+        const nodeIDs = Object.keys(imageMap[imageHash]);
+
+        // Filtering out any nodes/images which are not selected in the plugin UI
+        const filteredNodeIDs = nodeIDs.filter((nodeID) => {
+          const metadataItem = metadata.find((item) => item.imageHash === imageHash && item.nodeID === nodeID);
+          return typeof metadataItem !== 'undefined' ? metadataItem.included : false;
+        });
+
+        await compressAndApplyImage(imageHash, filteredNodeIDs, bytes);
       }
     }
   }

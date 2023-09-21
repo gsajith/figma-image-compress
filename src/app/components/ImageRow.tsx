@@ -5,7 +5,7 @@ import { areEqual } from 'react-window';
 import memoize from 'memoize-one';
 
 const ImageRow = memo(({ data, index, style }: any) => {
-  const { items, toggleItemChecked, goToItem } = data;
+  const { items, toggleItemChecked, goToItem, compressing, scanning } = data;
   const item = items[index] as any;
 
   const navigate = (e) => {
@@ -15,7 +15,9 @@ const ImageRow = memo(({ data, index, style }: any) => {
 
   return (
     <div className="imageRow" style={style} onClick={() => toggleItemChecked(index)} key={item.imageHash + item.nodeID}>
-      <input type="checkbox" checked={item.included} onChange={() => {}} />
+      {typeof item.compressedSize === 'undefined' && (
+        <input type="checkbox" checked={item.included} onChange={() => {}} disabled={scanning || compressing} />
+      )}
       <div className="imageRowContent" onClick={navigate}>
         <div style={{ marginLeft: 4 }}>
           {item.width} × {item.height}
@@ -34,10 +36,12 @@ const ImageRow = memo(({ data, index, style }: any) => {
   );
 }, areEqual);
 
-export const createItemData = memoize((items, toggleItemChecked, goToItem) => ({
+export const createItemData = memoize((items, toggleItemChecked, goToItem, compressing, scanning) => ({
   items,
   toggleItemChecked,
   goToItem,
+  compressing,
+  scanning,
 }));
 
 export default ImageRow;
