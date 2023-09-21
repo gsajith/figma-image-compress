@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef } from 'react';
-import { getImageSizeString, getMimeTypeFromArrayBuffer } from '../helpers/imageHelpers.js';
+import { getImageSizeString } from '../helpers/imageHelpers.js';
 import { GoLinkExternal } from 'react-icons/go';
 import { areEqual } from 'react-window';
 import memoize from 'memoize-one';

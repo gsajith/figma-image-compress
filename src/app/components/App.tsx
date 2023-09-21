@@ -357,8 +357,6 @@ function App() {
           setCanvasWidth(scaleWidth);
           setCanvasHeight(scaleHeight);
           ctx.drawImage(image, 0, 0, scaleWidth, scaleHeight);
-          // Get blob from newly drawn canvas, reduce quality too if needed
-          // const imageData = ctx.getImageData(0, 0, scaleWidth, scaleHeight);
 
           let mimeType = getMimeTypeFromArrayBuffer(bytes);
 
@@ -614,6 +612,7 @@ function App() {
           </AutoSizer>
         )}
       </div>
+
       {/*
       {totalSizeSaved > 0 && (
         <div
