@@ -41,7 +41,7 @@ button:not(:disabled):hover {
   border-radius: 24px 0px 24px 24px;
   overflow: hidden;
   border: 1px solid transparent;
-  right: 6px;
+  right: 16px;
   top: 8px;
   color: var(--figma-color-text);
 }
@@ -73,6 +73,7 @@ button:not(:disabled):hover {
 }
 
 #compress {
+  min-width: 140px;
   box-shadow: none;
   background: var(--figma-color-bg-brand);
   color: white;

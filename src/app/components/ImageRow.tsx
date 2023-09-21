@@ -24,6 +24,8 @@ const ImageRow = memo(({ data, index, style }: any) => {
         </div>
         <GoImage style={{ width: 25, height: 20 }} />
         <div style={{ opacity: 0.6, marginRight: 4 }}>— {getImageSizeString(item.size)}</div>
+
+        {/* FIXME: Account for negatives in red here */}
         {item.compressedSize && (
           <div style={{ fontWeight: 'bold', color: 'var(--figma-color-text-success)', marginTop: -3 }}>
             ⭢ {getImageSizeString(item.compressedSize)} (-

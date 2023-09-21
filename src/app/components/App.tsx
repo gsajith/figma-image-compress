@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/ui.css';
 import { getMimeTypeFromArrayBuffer, getQualityString, getImageSizeString } from '../helpers/imageHelpers.js';
-import { IoMdOptions, IoMdRefresh } from 'react-icons/io';
+import { IoMdRefresh } from 'react-icons/io';
+import { IoSettingsOutline } from 'react-icons/io5';
 import { FixedSizeList as List } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import ImageRow, { createItemData } from './ImageRow';
@@ -215,9 +216,8 @@ function App() {
 
       for (let i = 0; i < nodeList.length; i++) {
         const node = nodeList[i];
-        // TODO: Scale this up by 2x for retina?
-        const height = node.height;
-        const width = node.width;
+        const height = node.height * 2;
+        const width = node.width * 2;
         const targetHash = node.targetHash;
 
         for (let j = 0; j < node.fills.length; j++) {
@@ -387,28 +387,6 @@ function App() {
         style={{ left: '100%', position: 'absolute' }}
       />
 
-      {/* Scan button */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: 'flex-start',
-          marginLeft: 8,
-          marginBottom: 16,
-        }}
-      >
-        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning}>
-          {scanning ? (
-            'Scanning selection...'
-          ) : (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-              <IoMdRefresh style={{ transform: 'scale(1.4)', marginLeft: -4 }} />
-              Find images in selection ({selectionLength})
-            </div>
-          )}
-        </button>
-      </div>
-
       <div className="optionsWrapper">
         <div
           className="optionsContainer"
@@ -426,7 +404,7 @@ function App() {
               setOptionsOpen(!optionsOpen);
             }}
           >
-            Options <IoMdOptions style={{ transform: 'scale(1.8)', width: 30 }} />
+            <IoSettingsOutline style={{ transform: 'scale(1.8)', width: 30 }} />
           </div>
           {optionsOpen && (
             <div style={{ padding: '24px 16px' }}>
@@ -493,8 +471,30 @@ function App() {
         </div>
       </div>
 
+      {/* Scan button */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'flex-start',
+          marginLeft: 8,
+          marginBottom: 16,
+        }}
+      >
+        <button onClick={onScan} style={{ minWidth: 230 }} disabled={scanning}>
+          {scanning ? (
+            'Scanning selection...'
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+              <IoMdRefresh style={{ transform: 'scale(1.4)', marginLeft: -4 }} />
+              Find images in selection ({selectionLength})
+            </div>
+          )}
+        </button>
+      </div>
+
       {/* Scanned images */}
-      {metadata && metadata.length > 1 && (
+      {metadata && metadata.length > 1 && metadata.length - numCompressed > 0 && (
         <div
           className="topImageRow"
           onClick={() => {
@@ -525,7 +525,9 @@ function App() {
             {({ height, width }) => (
               <List
                 className="imageArea"
-                style={{ borderRadius: metadata.length > 0 ? '0px 0px 6px 6px' : '6px' }}
+                style={{
+                  borderRadius: metadata.length > 1 && metadata.length - numCompressed > 0 ? '0px 0px 6px 6px' : '6px',
+                }}
                 height={height - 8}
                 itemData={createItemData(metadata, toggleItemChecked, goToItem, compressing, scanning)}
                 itemCount={metadata.length}
@@ -539,13 +541,67 @@ function App() {
         )}
       </div>
 
-      {/* Button container */}
-      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end', margin: 4, marginRight: 8 }}>
-        <div>{getImageSizeString(totalSizeSaved)}</div>
+      {/* Bottom button container */}
+      <div
+        style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', margin: 4, marginRight: 8 }}
+      >
+        <div style={{ marginLeft: 6, marginRight: 8, width: '100%' }}>
+          {!scanning && metadata.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {totalSizeSaved > 0 ? (
+                <div
+                  style={{
+                    fontWeight: 'bold',
+                    color: 'var(--figma-color-text-success)',
+                  }}
+                >
+                  You saved {getImageSizeString(totalSizeSaved)}!
+                </div>
+              ) : (
+                <div>
+                  {numChecked === 0
+                    ? numCompressed === metadata.length
+                      ? 'All images compressed'
+                      : 'Select images to compress'
+                    : 'Ready to compress!'}
+                </div>
+              )}
+              <div
+                style={{
+                  width: '100%',
+                  borderRadius: 30,
+                  height: 24,
+                  backgroundColor: 'var(--figma-color-bg-tertiary)',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ zIndex: 2 }}>
+                  {numCompressed}/{numChecked + numCompressed} compressed
+                </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    width: `${Math.min(
+                      100,
+                      Math.max(0, Math.round((numCompressed / (numChecked + numCompressed)) * 100))
+                    )}%`,
+                    height: '100%',
+                    background: 'var(--figma-color-bg-brand)',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
         <button
           id="compress"
           onClick={onCompress}
-          disabled={scanning || !imageMap || Object.keys(imageMap).length <= 0 || compressing}
+          disabled={scanning || !imageMap || Object.keys(imageMap).length <= 0 || compressing || numChecked === 0}
         >
           Compress images
         </button>
