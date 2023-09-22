@@ -49,9 +49,21 @@ const ImageRow = memo(({ data, index, style }: any) => {
         <input type="checkbox" checked={item.included} onChange={() => {}} disabled={scanning || compressing} />
       )}
       <div className="imageRowContent" onClick={navigate}>
-        <div style={{ backgroundColor: 'white', borderRadius: 4, overflow: 'hidden', marginLeft: 4, marginRight: 4 }}>
+        <div
+          style={{
+            backgroundColor: 'var(--figma-color-bg-tertiary)',
+            borderRadius: 4,
+            overflow: 'hidden',
+            marginLeft: 4,
+            marginRight: 4,
+          }}
+        >
           <canvas
-            style={{ width: DRAW_SIZE / 3, height: DRAW_SIZE / 3 }}
+            style={{
+              width: DRAW_SIZE / 3,
+              height: DRAW_SIZE / 3,
+              padding: 2,
+            }}
             ref={canvasRef}
             width={DRAW_SIZE}
             height={DRAW_SIZE}
